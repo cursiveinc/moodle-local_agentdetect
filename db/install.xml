@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<XMLDB PATH="local/agentdetect/db" VERSION="20240127" COMMENT="XMLDB file for Moodle local/agentdetect"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="../../../lib/xmldb/xmldb.xsd"
+>
+  <TABLES>
+    <TABLE NAME="local_agentdetect_signals" COMMENT="Stores agent detection signals for each session">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User ID associated with the session"/>
+        <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Context ID where detection occurred"/>
+        <FIELD NAME="sessionid" TYPE="char" LENGTH="64" NOTNULL="true" COMMENT="Unique detection session identifier"/>
+        <FIELD NAME="signaltype" TYPE="char" LENGTH="32" NOTNULL="true" COMMENT="Type of signal: fingerprint, interaction, combined, unload"/>
+        <FIELD NAME="fingerprintscore" TYPE="int" LENGTH="3" NOTNULL="false" COMMENT="Fingerprint detection score 0-100"/>
+        <FIELD NAME="interactionscore" TYPE="int" LENGTH="3" NOTNULL="false" COMMENT="Interaction anomaly score 0-100"/>
+        <FIELD NAME="combinedscore" TYPE="int" LENGTH="3" NOTNULL="false" COMMENT="Combined detection score 0-100"/>
+        <FIELD NAME="verdict" TYPE="char" LENGTH="32" NOTNULL="false" COMMENT="Detection verdict string"/>
+        <FIELD NAME="signaldata" TYPE="text" NOTNULL="false" COMMENT="JSON-encoded detailed signal data"/>
+        <FIELD NAME="useragent" TYPE="text" NOTNULL="false" COMMENT="Browser user agent string"/>
+        <FIELD NAME="ipaddress" TYPE="char" LENGTH="45" NOTNULL="false" COMMENT="Client IP address"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="Timestamp when signal was recorded"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="sessionid" UNIQUE="false" FIELDS="sessionid"/>
+        <INDEX NAME="userid_timecreated" UNIQUE="false" FIELDS="userid, timecreated"/>
+        <INDEX NAME="combinedscore" UNIQUE="false" FIELDS="combinedscore"/>
+        <INDEX NAME="verdict" UNIQUE="false" FIELDS="verdict"/>
+        <INDEX NAME="contextid" UNIQUE="false" FIELDS="contextid"/>
+      </INDEXES>
+    </TABLE>
+    <TABLE NAME="local_agentdetect_flags" COMMENT="Aggregated agent detection flags per user">
+      <FIELDS>
+        <FIELD NAME="id" TYPE="int" LENGTH="10" NOTNULL="true" SEQUENCE="true"/>
+        <FIELD NAME="userid" TYPE="int" LENGTH="10" NOTNULL="true" COMMENT="User ID"/>
+        <FIELD NAME="contextid" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="Context ID if context-specific flag"/>
+        <FIELD NAME="flagtype" TYPE="char" LENGTH="32" NOTNULL="true" COMMENT="Type of flag: agent_suspected, agent_confirmed, cleared"/>
+        <FIELD NAME="maxscore" TYPE="int" LENGTH="3" NOTNULL="true" DEFAULT="0" COMMENT="Maximum detection score observed"/>
+        <FIELD NAME="detectioncount" TYPE="int" LENGTH="10" NOTNULL="true" DEFAULT="0" COMMENT="Number of suspicious detections"/>
+        <FIELD NAME="lastsessionid" TYPE="char" LENGTH="64" NOTNULL="false" COMMENT="Most recent detection session ID"/>
+        <FIELD NAME="notes" TYPE="text" NOTNULL="false" COMMENT="Admin notes about this flag"/>
+        <FIELD NAME="flaggedby" TYPE="int" LENGTH="10" NOTNULL="false" COMMENT="User ID who manually set flag, NULL if automated"/>
+        <FIELD NAME="timecreated" TYPE="int" LENGTH="10" NOTNULL="true"/>
+        <FIELD NAME="timemodified" TYPE="int" LENGTH="10" NOTNULL="true"/>
+      </FIELDS>
+      <KEYS>
+        <KEY NAME="primary" TYPE="primary" FIELDS="id"/>
+        <KEY NAME="userid" TYPE="foreign" FIELDS="userid" REFTABLE="user" REFFIELDS="id"/>
+      </KEYS>
+      <INDEXES>
+        <INDEX NAME="userid_contextid" UNIQUE="true" FIELDS="userid, contextid"/>
+        <INDEX NAME="flagtype" UNIQUE="false" FIELDS="flagtype"/>
+        <INDEX NAME="maxscore" UNIQUE="false" FIELDS="maxscore"/>
+      </INDEXES>
+    </TABLE>
+  </TABLES>
+</XMLDB>

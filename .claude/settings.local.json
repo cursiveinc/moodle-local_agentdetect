@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "WebFetch(domain:www.hacktron.ai)",
+      "WebFetch(domain:medium.com)",
+      "WebFetch(domain:en.wikipedia.org)",
+      "WebFetch(domain:www.perplexity.ai)"
+    ]
+  }
+}
