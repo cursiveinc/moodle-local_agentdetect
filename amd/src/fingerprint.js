@@ -507,7 +507,6 @@ const probeExtensionResource = () => {
     return new Promise((resolve) => {
         const baseUrl = `chrome-extension://${COMET_EXTENSION_ID}/`;
         let resolved = false;
-        let remaining = COMET_RESOURCE_PATHS.length;
 
         const done = (path) => {
             if (!resolved) {
@@ -516,20 +515,24 @@ const probeExtensionResource = () => {
             }
         };
 
-        for (const path of COMET_RESOURCE_PATHS) {
-            const img = new Image();
-            img.onload = () => {
-                remaining--;
-                done(path);
-            };
-            img.onerror = () => {
-                remaining--;
-                if (remaining === 0 && !resolved) {
-                    done(null);
-                }
-            };
-            img.src = baseUrl + path;
-        }
+        // Probe each resource path in parallel using Promise.all.
+        const probes = COMET_RESOURCE_PATHS.map((path) => {
+            return new Promise((probeResolve) => {
+                const img = new Image();
+                img.onload = () => {
+                    done(path);
+                    probeResolve(true);
+                };
+                img.onerror = () => {
+                    probeResolve(false);
+                };
+                img.src = baseUrl + path;
+            });
+        });
+
+        Promise.all(probes).then(() => {
+            done(null);
+        });
 
         // Timeout after 1 second.
         setTimeout(() => {

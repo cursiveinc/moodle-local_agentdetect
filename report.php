@@ -81,6 +81,10 @@ if ($download === 'json') {
             'event_counts' => $data->interaction->eventCounts ?? null,
             'anomalies' => $data->interaction->anomalies ?? [],
             'injection_signals' => $data->injection->signals ?? [],
+            'comet_detected' => $data->comet->detected ?? false,
+            'comet_score' => $data->comet->score ?? null,
+            'comet_signals' => $data->comet->signals ?? [],
+            'detected_agent' => $data->detectedAgent ?? null,
             'ip_address' => $signal->ipaddress,
             'user_agent' => $signal->useragent,
         ];
@@ -320,6 +324,11 @@ if (empty($signals)) {
             $verdict = html_writer::tag('span', 'HUMAN', ['class' => 'badge badge-success', 'title' => 'LIKELY_HUMAN']);
         }
 
+        // Comet agent badge.
+        if (isset($data->detectedAgent) && $data->detectedAgent === 'comet_agentic') {
+            $verdict .= ' ' . html_writer::tag('span', 'COMET', ['class' => 'badge badge-dark']);
+        }
+
         // Details - decode and show anomalies.
         $detailshtml = '';
         if ($data) {
@@ -336,6 +345,19 @@ if (empty($signals)) {
             if (isset($data->injection->signals) && !empty($data->injection->signals)) {
                 foreach ($data->injection->signals as $s) {
                     $details[] = '<span class="text-info">[INJ] ' . $s->name . '</span> (' . $s->count . ') w:' . $s->maxWeight;
+                }
+            }
+
+            // Comet agentic signals.
+            if (isset($data->comet) && !empty($data->comet->detected)) {
+                $details[] = '<span class="text-danger font-weight-bold">[COMET AGENT] Score: ' .
+                    ($data->comet->score ?? '?') . '</span>';
+                if (isset($data->comet->signals) && !empty($data->comet->signals)) {
+                    foreach ($data->comet->signals as $cs) {
+                        $weight = $cs->weight ?? $cs->maxWeight ?? '?';
+                        $details[] = '<span class="text-danger">[COMET] ' .
+                            htmlspecialchars($cs->name) . '</span> w:' . $weight;
+                    }
                 }
             }
 

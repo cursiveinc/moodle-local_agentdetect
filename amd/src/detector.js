@@ -252,18 +252,20 @@ export const collectAndReport = async() => {
 };
 
 /**
- * Calculate combined score from fingerprint, interaction, and injection signals.
+ * Calculate combined score from fingerprint, interaction, injection, and Comet signals.
  *
  * Interaction score is the primary signal (catches human-driven AI tool usage).
  * Injection score adds evidence of AI helper extensions being present.
  * Fingerprint score is a bonus when detected (catches automated headless browsers).
+ * Comet score is a definitive category for Perplexity Comet agentic mode.
  *
  * @param {number} fingerprintScore Fingerprint score (0-100).
  * @param {number} interactionScore Interaction score (0-100).
  * @param {number} injectionScore Injection detection score (0-100).
+ * @param {number} cometScore Comet agentic mode score (0-100).
  * @returns {number} Combined score (0-100).
  */
-const calculateCombinedScore = (fingerprintScore, interactionScore, injectionScore = 0) => {
+const calculateCombinedScore = (fingerprintScore, interactionScore, injectionScore = 0, cometScore = 0) => {
     // Interaction is the base score - it catches both:
     // 1. Automated agents (teleport clicks, superhuman speed)
     // 2. Human-driven AI usage (tab switches, copy-paste patterns, pauses)
@@ -297,7 +299,102 @@ const calculateCombinedScore = (fingerprintScore, interactionScore, injectionSco
     }
     // If fingerprint is 0-19, no adjustment - interaction score stands alone.
 
+    // Comet agentic mode signals — definitive category.
+    if (cometScore >= 70) {
+        // Strong Comet agentic evidence — ensure HIGH_CONFIDENCE.
+        score = Math.max(score, 80);
+        score = Math.min(100, score + 10);
+    } else if (cometScore >= 40) {
+        // Moderate Comet signals — significant boost.
+        score = Math.min(100, score + 25);
+    } else if (cometScore >= 20) {
+        // Weak Comet signals — modest boost.
+        score = Math.min(100, score + 10);
+    }
+
     return Math.round(score);
+};
+
+/**
+ * Extract Comet-specific signals from all detection sub-modules.
+ *
+ * @param {Object} fingerprint Fingerprint results.
+ * @param {Object} interaction Interaction analysis results.
+ * @param {Object} injection Injection analysis results.
+ * @returns {Object} Comet detection summary with signals and score.
+ */
+const extractCometSignals = (fingerprint, interaction, injection) => {
+    const signals = [];
+
+    // From fingerprint: Comet extension probing and webdriver change.
+    if (fingerprint.cometExtension) {
+        signals.push(...(fingerprint.cometExtension.signals || []));
+    }
+    if (fingerprint.perplexityNetwork) {
+        signals.push(...(fingerprint.perplexityNetwork.signals || []));
+    }
+    // Webdriver mid-session change (debugger attachment).
+    const webdriverChange = (fingerprint.webdriver?.signals || []).find(
+        (s) => s.name === 'webdriver.changed_mid_session'
+    );
+    if (webdriverChange) {
+        signals.push(webdriverChange);
+    }
+
+    // From interaction: comet-prefixed anomalies.
+    const cometAnomalies = (interaction.anomalies || []).filter(
+        (a) => a.name.startsWith('comet.')
+    );
+    signals.push(...cometAnomalies);
+
+    // From injection: Comet-specific findings.
+    const cometInjections = (injection.signals || []).filter(
+        (s) => s.name.includes('comet') || s.name.includes('perplexity') ||
+               s.name.includes('npclhjbddhklpbnacpjloidibaggcgon')
+    );
+    signals.push(...cometInjections);
+
+    return {
+        detected: signals.length > 0,
+        signalCount: signals.length,
+        signals,
+        score: calculateCometScore(signals),
+    };
+};
+
+/**
+ * Calculate Comet agentic mode score from extracted signals.
+ *
+ * @param {Array} signals Comet-specific signals.
+ * @returns {number} Score from 0-100.
+ */
+const calculateCometScore = (signals) => {
+    if (signals.length === 0) {
+        return 0;
+    }
+
+    const totalWeight = signals.reduce((sum, s) => sum + (s.weight || s.maxWeight || 0), 0);
+
+    // Definitive signals = immediate high score.
+    const hasDefinitiveSignal = signals.some((s) =>
+        s.name === 'comet_overlay_js' ||
+        s.name === 'comet.extension.script_injected' ||
+        s.name === 'comet.extension.resource_probe' ||
+        s.name === 'comet_agent_src' ||
+        s.name === 'network.perplexity_agent'
+    );
+
+    if (hasDefinitiveSignal) {
+        return Math.min(100, 70 + totalWeight);
+    }
+
+    // Multiple behavioral signals compound.
+    const behavioralSignals = signals.filter((s) => s.name.startsWith('comet.'));
+    if (behavioralSignals.length >= 3) {
+        return Math.min(100, totalWeight * 2);
+    }
+
+    return Math.min(100, totalWeight);
 };
 
 /**
