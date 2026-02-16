@@ -300,16 +300,17 @@ const calculateCombinedScore = (fingerprintScore, interactionScore, injectionSco
     // If fingerprint is 0-19, no adjustment - interaction score stands alone.
 
     // Comet agentic mode signals — definitive category.
+    // With tier-aware scoring, only real agents reach cometScore >= 70.
     if (cometScore >= 70) {
         // Strong Comet agentic evidence — ensure HIGH_CONFIDENCE.
         score = Math.max(score, 80);
         score = Math.min(100, score + 10);
     } else if (cometScore >= 40) {
-        // Moderate Comet signals — significant boost.
-        score = Math.min(100, score + 25);
+        // Moderate Comet signals — modest boost.
+        score = Math.min(100, score + 15);
     } else if (cometScore >= 20) {
-        // Weak Comet signals — modest boost.
-        score = Math.min(100, score + 10);
+        // Weak Comet signals — small boost.
+        score = Math.min(100, score + 5);
     }
 
     return Math.round(score);
@@ -368,6 +369,10 @@ const extractCometSignals = (fingerprint, interaction, injection) => {
 /**
  * Calculate Comet agentic mode score from extracted signals.
  *
+ * Uses a tiered approach: Tier 1 (physically-impossible) signals compound
+ * with Tier 2 (temporal/behavioral) signals. Temporal-only signals are
+ * capped to prevent false positives from normal quiz-taking behavior.
+ *
  * @param {Array} signals Comet-specific signals.
  * @returns {number} Score from 0-100.
  */
@@ -378,7 +383,7 @@ const calculateCometScore = (signals) => {
 
     const totalWeight = signals.reduce((sum, s) => sum + (s.weight || s.maxWeight || 0), 0);
 
-    // Definitive signals = immediate high score.
+    // Definitive signals = immediate high score (extension/runtime detection).
     const hasDefinitiveSignal = signals.some((s) =>
         s.name === 'comet_overlay_js' ||
         s.name === 'comet.extension.script_injected' ||
@@ -392,13 +397,35 @@ const calculateCometScore = (signals) => {
         return Math.min(100, 70 + totalWeight);
     }
 
-    // Multiple behavioral signals compound.
-    const behavioralSignals = signals.filter((s) => s.name.startsWith('comet.'));
-    if (behavioralSignals.length >= 3) {
+    // Tier 1: physically-impossible signals (low false-positive risk).
+    // These indicate behaviour a human physically cannot produce.
+    const TIER1_NAMES = [
+        'comet.ultra_precise_center',
+        'comet.low_mouse_to_action_ratio', // Only the extreme variant (weight 10, movePerAction < 2).
+    ];
+    const tier1 = signals.filter((s) =>
+        TIER1_NAMES.includes(s.name) && s.weight >= 10
+    );
+
+    // Tier 2: temporal/behavioral signals (higher false-positive risk).
+    // Action bursts, read-then-act, focus sequences — humans trigger these during quizzes.
+    const tier2 = signals.filter((s) =>
+        s.name.startsWith('comet.') && !tier1.includes(s)
+    );
+
+    // Compounding requires at least 1 Tier 1 signal.
+    if (tier1.length >= 1 && tier2.length >= 2) {
+        // Strong fingerprint + behavioral confirmation.
         return Math.min(100, totalWeight * 2);
     }
 
-    return Math.min(100, totalWeight);
+    if (tier1.length >= 1) {
+        // Tier 1 alone — moderate boost.
+        return Math.min(100, Math.round(totalWeight * 1.5));
+    }
+
+    // Temporal-only signals — cap the score to prevent false positives.
+    return Math.min(40, totalWeight);
 };
 
 /**

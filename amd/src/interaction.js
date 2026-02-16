@@ -571,26 +571,27 @@ const analyzeMouseMovement = () => {
         }
     }
 
-    // KEY SIGNAL: Mouse-to-action ratio.
-    // Humans generate many mouse moves per click (typically 20-100+).
+    // KEY SIGNAL: Mouse-to-click ratio.
+    // Humans generate many mouse moves per click (typically 8-100+).
     // CDP-driven agents generate almost no mouse moves (0-3 per click).
-    // This is the strongest real-world differentiator from test data.
-    const totalActions = eventStore.clicks.length + eventStore.keystrokes.filter((k) => k.type === 'down').length;
-    if (totalActions >= 3 && eventStore.pageLoadCount >= 2) {
-        const movePerAction = moves.length / totalActions;
-        if (movePerAction < 2) {
-            // Almost no mouse movement relative to actions — very strong agent signal.
+    // Use clicks only — keystrokes don't require mouse movement, so including
+    // them inflates the denominator and penalises humans who type answers.
+    const totalClicks = eventStore.clicks.length;
+    if (totalClicks >= 3 && eventStore.pageLoadCount >= 2) {
+        const movePerClick = moves.length / totalClicks;
+        if (movePerClick < 2) {
+            // Almost no mouse movement relative to clicks — very strong agent signal.
             anomalies.push({
                 name: 'comet.low_mouse_to_action_ratio',
-                value: movePerAction,
+                value: movePerClick,
                 weight: 10,
             });
-        } else if (movePerAction < 5) {
-            // Very low mouse movement — suspicious.
+        } else if (movePerClick < 5) {
+            // Very low mouse movement — suspicious but not definitive.
             anomalies.push({
                 name: 'comet.low_mouse_to_action_ratio',
-                value: movePerAction,
-                weight: 7,
+                value: movePerClick,
+                weight: 5,
             });
         }
     }
@@ -695,7 +696,8 @@ const analyzeClicks = () => {
     }
 
     // Check for impossibly fast clicks (< 50ms reaction time).
-    // Note: humans trigger this with rapid double-clicks, so not definitive alone.
+    // Humans trigger this routinely with rapid double-clicks on radio buttons
+    // and "Next page" buttons during quizzes — weak signal on its own.
     const interClickTimes = [];
     for (let i = 1; i < clicks.length; i++) {
         interClickTimes.push(clicks[i].timestamp - clicks[i - 1].timestamp);
@@ -705,7 +707,7 @@ const analyzeClicks = () => {
         anomalies.push({
             name: 'click.superhuman_speed',
             value: fastClicks.length,
-            weight: 6, // Reduced from 10 — humans can rapid-click too.
+            weight: 3,
         });
     }
 
@@ -884,7 +886,7 @@ const analyzeEventSequence = () => {
         anomalies.push({
             name: 'sequence.direct_focus',
             value: directFocus.length / eventStore.focusChanges.length,
-            weight: 6,
+            weight: 3,
         });
     }
 
@@ -900,11 +902,11 @@ const analyzeEventSequence = () => {
                 rapidSequentialFocus++;
             }
         }
-        if (rapidSequentialFocus >= 2) {
+        if (rapidSequentialFocus >= 4) {
             anomalies.push({
                 name: 'comet.rapid_focus_sequence',
                 value: rapidSequentialFocus,
-                weight: 7,
+                weight: 5,
             });
         }
     }
@@ -945,20 +947,22 @@ const calculateInteractionScore = (anomalies) => {
     const maxPossibleWeight = anomalies.length * 10;
 
     // Check for "smoking gun" combinations that indicate definite agent.
-    const hasSuperhuman = anomalies.some((a) => a.name === 'click.superhuman_speed');
+    // Only physically-impossible signals qualify — temporal/behavioral signals
+    // (action_burst, read_then_act, no_mousemove_trail) fire for human quiz-takers.
     const hasCenterPrecision = anomalies.some((a) => a.name === 'click.center_precision');
     const hasTeleport = anomalies.some((a) => a.name === 'click.teleport_pattern');
     const hasNoMovement = anomalies.some((a) => a.name === 'click.no_movement');
     const hasUltraPrecise = anomalies.some((a) => a.name === 'comet.ultra_precise_center');
-    const hasNoTrail = anomalies.some((a) => a.name === 'comet.no_mousemove_trail');
-    const hasReadThenAct = anomalies.some((a) => a.name === 'comet.read_then_act');
-    const hasLowMouseRatio = anomalies.some((a) => a.name === 'comet.low_mouse_to_action_ratio');
+    // Only the extreme variant (movePerAction < 2, weight 10) is physically impossible.
+    const hasLowMouseRatio = anomalies.some(
+        (a) => a.name === 'comet.low_mouse_to_action_ratio' && a.weight >= 10
+    );
 
     // Multiple strong signals = high confidence agent.
     let multiplier = 1.0;
     const strongSignals = [
-        hasSuperhuman, hasCenterPrecision, hasTeleport, hasNoMovement,
-        hasUltraPrecise, hasNoTrail, hasReadThenAct, hasLowMouseRatio,
+        hasCenterPrecision, hasTeleport, hasNoMovement,
+        hasUltraPrecise, hasLowMouseRatio,
     ].filter(Boolean).length;
     if (strongSignals >= 3) {
         multiplier = 1.5; // 3+ strong signals = very likely agent.
@@ -978,8 +982,8 @@ const calculateInteractionScore = (anomalies) => {
 
     if (totalEvents < 10) {
         // Very sparse — heavily discount unless smoking-gun signals present.
-        // Center_precision is reliable even with few events; teleport_pattern is not.
-        const hasReliableSignal = hasCenterPrecision || hasUltraPrecise || hasNoTrail || hasLowMouseRatio;
+        // Center_precision and ultra_precise_center are reliable even with few events.
+        const hasReliableSignal = hasCenterPrecision || hasUltraPrecise || hasLowMouseRatio;
         if (!hasReliableSignal) {
             rawScore *= 0.3; // 70% discount for ratio-only signals with sparse data.
         } else {
@@ -1048,19 +1052,26 @@ const analyzeActionBursts = () => {
         }
     }
 
-    if (burstCount >= 2) {
+    // Normalize by page count — answering one question per page naturally
+    // produces ~1-2 bursts and ~1 read-then-act per page.
+    // Only flag when the per-page rate exceeds normal quiz-taking.
+    const pages = Math.max(eventStore.pageLoadCount, 1);
+    const burstsPerPage = burstCount / pages;
+    const readActPerPage = readThenActCount / pages;
+
+    if (burstsPerPage >= 3) {
         anomalies.push({
             name: 'comet.action_burst',
             value: burstCount,
-            weight: 8,
+            weight: 5,
         });
     }
 
-    if (readThenActCount >= 1) {
+    if (readActPerPage >= 2) {
         anomalies.push({
             name: 'comet.read_then_act',
             value: readThenActCount,
-            weight: 9,
+            weight: 5,
         });
     }
 
@@ -1083,12 +1094,22 @@ const analyzeCDPClickPatterns = () => {
         return anomalies;
     }
 
-    // For each click, count mousemoves in the 500ms window before it.
+    // Guard against cross-page stale data: find the latest mousemove timestamp.
+    const latestMoveTime = moves.length > 0 ? moves[moves.length - 1].timestamp : 0;
+
+    // For each click, count mousemoves in the 300ms window before it.
+    // Skip clicks that are stale (> 30s before the latest mousemove) to avoid
+    // cross-page accumulation artifacts.
     let zeroTrailClicks = 0;
+    let validClicks = 0;
 
     for (const click of clicks) {
+        if (latestMoveTime > 0 && click.timestamp < latestMoveTime - 30000) {
+            continue; // Stale cross-page click — skip.
+        }
+        validClicks++;
         const precedingMoves = moves.filter((m) =>
-            m.timestamp > click.timestamp - 500 &&
+            m.timestamp > click.timestamp - 300 &&
             m.timestamp < click.timestamp
         );
         if (precedingMoves.length === 0) {
@@ -1096,12 +1117,16 @@ const analyzeCDPClickPatterns = () => {
         }
     }
 
-    const ratio = zeroTrailClicks / clicks.length;
-    if (ratio > 0.7) {
+    if (validClicks < 3) {
+        return anomalies;
+    }
+
+    const ratio = zeroTrailClicks / validClicks;
+    if (ratio > 0.85) {
         anomalies.push({
             name: 'comet.no_mousemove_trail',
             value: ratio,
-            weight: 9,
+            weight: 6,
         });
     }
 
@@ -1129,7 +1154,7 @@ const analyzePointerEvents = () => {
         anomalies.push({
             name: 'comet.missing_pointer_events',
             value: ratio,
-            weight: 7,
+            weight: 4,
         });
     }
 
@@ -1222,7 +1247,15 @@ export const saveToSessionStorage = () => {
                 timestamp: f.timestamp,
                 type: f.type,
             })),
-            pointerEvents: eventStore.pointerEvents.slice(-200),
+            // Prioritize pointer downs over pointer moves to prevent ratio deflation.
+            pointerEvents: (() => {
+                const downs = eventStore.pointerEvents.filter((p) => p.type === 'down').slice(-200);
+                const remaining = 200 - downs.length;
+                const moves = remaining > 0
+                    ? eventStore.pointerEvents.filter((p) => p.type !== 'down').slice(-remaining)
+                    : [];
+                return [...downs, ...moves].sort((a, b) => a.timestamp - b.timestamp);
+            })(),
         };
         sessionStorage.setItem(getStorageKey(), JSON.stringify(data));
     } catch (e) {
