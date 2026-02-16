@@ -60,6 +60,7 @@ const eventStore = {
     focusChanges: [],
     pointerEvents: [],
     startTime: Date.now(),
+    pageLoadCount: 1,
 };
 
 /**
@@ -162,10 +163,12 @@ export const stopMonitoring = () => {
 /**
  * Handle mouse move events.
  *
+ * Uses Date.now() for timestamps so events can be compared across page loads.
+ *
  * @param {MouseEvent} e Mouse event.
  */
 const handleMouseMove = (e) => {
-    const now = performance.now();
+    const now = Date.now();
     const lastMove = eventStore.mouseMoves[eventStore.mouseMoves.length - 1];
 
     const moveData = {
@@ -192,7 +195,7 @@ const handleMouseMove = (e) => {
  * @param {MouseEvent} e Mouse event.
  */
 const handleClick = (e) => {
-    const now = performance.now();
+    const now = Date.now();
     const target = e.target;
     const rect = target.getBoundingClientRect();
 
@@ -230,7 +233,7 @@ const handleMouseDown = () => {
     // Store for click duration analysis.
     const lastClick = eventStore.clicks[eventStore.clicks.length - 1];
     if (lastClick && !lastClick.mousedownTime) {
-        lastClick.mousedownTime = performance.now();
+        lastClick.mousedownTime = Date.now();
     }
 };
 
@@ -241,7 +244,7 @@ const handleMouseUp = () => {
     // Calculate click duration.
     const lastClick = eventStore.clicks[eventStore.clicks.length - 1];
     if (lastClick && lastClick.mousedownTime) {
-        lastClick.clickDuration = performance.now() - lastClick.mousedownTime;
+        lastClick.clickDuration = Date.now() - lastClick.mousedownTime;
     }
 };
 
@@ -253,7 +256,7 @@ const handleMouseUp = () => {
 const handleMouseOver = (e) => {
     addToStore('hovers', {
         target: e.target,
-        timestamp: performance.now(),
+        timestamp: Date.now(),
         type: 'over',
     });
 };
@@ -266,7 +269,7 @@ const handleMouseOver = (e) => {
 const handleMouseOut = (e) => {
     addToStore('hovers', {
         target: e.target,
-        timestamp: performance.now(),
+        timestamp: Date.now(),
         type: 'out',
     });
 };
@@ -277,7 +280,7 @@ const handleMouseOut = (e) => {
  * @param {KeyboardEvent} e Keyboard event.
  */
 const handleKeyDown = (e) => {
-    const now = performance.now();
+    const now = Date.now();
     const lastKeystroke = eventStore.keystrokes[eventStore.keystrokes.length - 1];
 
     addToStore('keystrokes', {
@@ -298,7 +301,7 @@ const handleKeyUp = () => {
     );
     const matchingKeydown = keydowns[keydowns.length - 1];
     if (matchingKeydown) {
-        matchingKeydown.holdDuration = performance.now() - matchingKeydown.timestamp;
+        matchingKeydown.holdDuration = Date.now() - matchingKeydown.timestamp;
     }
 };
 
@@ -306,7 +309,7 @@ const handleKeyUp = () => {
  * Handle scroll events.
  */
 const handleScroll = () => {
-    const now = performance.now();
+    const now = Date.now();
     const lastScroll = eventStore.scrolls[eventStore.scrolls.length - 1];
 
     addToStore('scrolls', {
@@ -331,7 +334,7 @@ const handleFocusIn = (e) => {
             id: e.target.id,
             type: e.target.type,
         },
-        timestamp: performance.now(),
+        timestamp: Date.now(),
         type: 'in',
     });
 };
@@ -348,7 +351,7 @@ const handleFocusOut = (e) => {
             id: e.target.id,
             type: e.target.type,
         },
-        timestamp: performance.now(),
+        timestamp: Date.now(),
         type: 'out',
     });
 };
@@ -363,7 +366,7 @@ const handlePointerDown = (e) => {
         type: 'down',
         x: e.clientX,
         y: e.clientY,
-        timestamp: performance.now(),
+        timestamp: Date.now(),
         pointerType: e.pointerType,
     });
 };
@@ -374,7 +377,7 @@ const handlePointerDown = (e) => {
  * @param {PointerEvent} e Pointer event.
  */
 const handlePointerMove = (e) => {
-    const now = performance.now();
+    const now = Date.now();
     const last = eventStore.pointerEvents[eventStore.pointerEvents.length - 1];
     if (last && now - last.timestamp < 50) {
         return; // Throttle to 20Hz.
@@ -389,7 +392,18 @@ const handlePointerMove = (e) => {
 };
 
 /**
+ * Timestamp of last periodic save to sessionStorage.
+ *
+ * @type {number}
+ */
+let lastPeriodicSave = 0;
+
+/**
  * Add event to storage with size limiting.
+ *
+ * Also periodically saves to sessionStorage so that cross-page
+ * accumulation works even when beforeunload does not fire
+ * (e.g. CDP-driven page navigations by agents).
  *
  * @param {string} storeName Name of the store.
  * @param {Object} data Event data.
@@ -404,6 +418,18 @@ const addToStore = (storeName, data) => {
 
     // Invalidate cache.
     analysisCache = null;
+
+    // Periodic save: write to sessionStorage every 2 seconds at most.
+    // This ensures cross-page accumulation even if beforeunload doesn't fire.
+    const now = Date.now();
+    if (now - lastPeriodicSave > 2000) {
+        lastPeriodicSave = now;
+        try {
+            saveToSessionStorage();
+        } catch (e) {
+            // Ignore save errors.
+        }
+    }
 };
 
 /**
@@ -450,6 +476,7 @@ export const analyze = () => {
     const results = {
         timestamp: Date.now(),
         duration: Date.now() - eventStore.startTime,
+        pageLoadCount: eventStore.pageLoadCount,
         eventCounts: {
             mouseMoves: eventStore.mouseMoves.length,
             clicks: eventStore.clicks.length,
@@ -457,6 +484,7 @@ export const analyze = () => {
             scrolls: eventStore.scrolls.length,
             hovers: eventStore.hovers.length,
             focusChanges: eventStore.focusChanges.length,
+            pointerEvents: eventStore.pointerEvents.length,
         },
         anomalies: [],
         score: 0,
@@ -499,13 +527,14 @@ const analyzeMouseMovement = () => {
         return anomalies;
     }
 
-    // Check for perfectly linear movements (no human does this).
+    // Check for perfectly linear movements.
+    // Note: humans trigger this at 0.44-0.57 so it's a weak signal.
     const linearSegments = findLinearSegments(moves);
     if (linearSegments > moves.length * 0.3) {
         anomalies.push({
             name: 'mouse.linear_movement',
             value: linearSegments / moves.length,
-            weight: 7,
+            weight: 3, // Reduced from 7 — humans trigger this often.
         });
     }
 
@@ -538,6 +567,30 @@ const analyzeMouseMovement = () => {
                 name: 'mouse.constant_velocity',
                 value: variance,
                 weight: 6,
+            });
+        }
+    }
+
+    // KEY SIGNAL: Mouse-to-action ratio.
+    // Humans generate many mouse moves per click (typically 20-100+).
+    // CDP-driven agents generate almost no mouse moves (0-3 per click).
+    // This is the strongest real-world differentiator from test data.
+    const totalActions = eventStore.clicks.length + eventStore.keystrokes.filter((k) => k.type === 'down').length;
+    if (totalActions >= 3 && eventStore.pageLoadCount >= 2) {
+        const movePerAction = moves.length / totalActions;
+        if (movePerAction < 2) {
+            // Almost no mouse movement relative to actions — very strong agent signal.
+            anomalies.push({
+                name: 'comet.low_mouse_to_action_ratio',
+                value: movePerAction,
+                weight: 10,
+            });
+        } else if (movePerAction < 5) {
+            // Very low mouse movement — suspicious.
+            anomalies.push({
+                name: 'comet.low_mouse_to_action_ratio',
+                value: movePerAction,
+                weight: 7,
             });
         }
     }
@@ -642,6 +695,7 @@ const analyzeClicks = () => {
     }
 
     // Check for impossibly fast clicks (< 50ms reaction time).
+    // Note: humans trigger this with rapid double-clicks, so not definitive alone.
     const interClickTimes = [];
     for (let i = 1; i < clicks.length; i++) {
         interClickTimes.push(clicks[i].timestamp - clicks[i - 1].timestamp);
@@ -651,7 +705,7 @@ const analyzeClicks = () => {
         anomalies.push({
             name: 'click.superhuman_speed',
             value: fastClicks.length,
-            weight: 10, // Increased - definitive agent indicator.
+            weight: 6, // Reduced from 10 — humans can rapid-click too.
         });
     }
 
@@ -876,6 +930,9 @@ const calculateVariance = (arr) => {
 /**
  * Calculate overall interaction score.
  *
+ * Applies a confidence discount when total events are low, to avoid
+ * false positives from sparse data (e.g. a single quiz page with 2 clicks).
+ *
  * @param {Array} anomalies Detected anomalies.
  * @returns {number} Score from 0-100.
  */
@@ -895,12 +952,13 @@ const calculateInteractionScore = (anomalies) => {
     const hasUltraPrecise = anomalies.some((a) => a.name === 'comet.ultra_precise_center');
     const hasNoTrail = anomalies.some((a) => a.name === 'comet.no_mousemove_trail');
     const hasReadThenAct = anomalies.some((a) => a.name === 'comet.read_then_act');
+    const hasLowMouseRatio = anomalies.some((a) => a.name === 'comet.low_mouse_to_action_ratio');
 
     // Multiple strong signals = high confidence agent.
     let multiplier = 1.0;
     const strongSignals = [
         hasSuperhuman, hasCenterPrecision, hasTeleport, hasNoMovement,
-        hasUltraPrecise, hasNoTrail, hasReadThenAct,
+        hasUltraPrecise, hasNoTrail, hasReadThenAct, hasLowMouseRatio,
     ].filter(Boolean).length;
     if (strongSignals >= 3) {
         multiplier = 1.5; // 3+ strong signals = very likely agent.
@@ -909,7 +967,30 @@ const calculateInteractionScore = (anomalies) => {
     }
 
     // Normalize and apply scaling.
-    const rawScore = (totalWeight / Math.max(maxPossibleWeight, 30)) * 100 * multiplier;
+    let rawScore = (totalWeight / Math.max(maxPossibleWeight, 30)) * 100 * multiplier;
+
+    // Confidence discount: with very few events, ratios are unreliable.
+    // A human clicking 3 times with 2 mouse moves looks identical to an agent.
+    // Require more data before giving high scores.
+    const totalActions = eventStore.clicks.length + eventStore.keystrokes.length;
+    const totalMoves = eventStore.mouseMoves.length;
+    const totalEvents = totalActions + totalMoves;
+
+    if (totalEvents < 10) {
+        // Very sparse — heavily discount unless smoking-gun signals present.
+        // center_precision is reliable even with few events; teleport_pattern is not.
+        const hasReliableSignal = hasCenterPrecision || hasUltraPrecise || hasNoTrail || hasLowMouseRatio;
+        if (!hasReliableSignal) {
+            rawScore *= 0.3; // 70% discount for ratio-only signals with sparse data.
+        } else {
+            rawScore *= 0.7; // 30% discount even with reliable signals if data is sparse.
+        }
+    } else if (totalEvents < 25) {
+        // Moderate data — small discount.
+        rawScore *= 0.85;
+    }
+    // 25+ events = full confidence, no discount.
+
     return Math.min(100, Math.round(rawScore));
 };
 
@@ -1082,6 +1163,9 @@ const loadFromSessionStorage = () => {
             eventStore.startTime = data.startTime;
         }
 
+        // Restore page load count and increment.
+        eventStore.pageLoadCount = (data.pageLoadCount || 1) + 1;
+
         // Merge stored events — keep the most recent ones within limits.
         const storeNames = ['mouseMoves', 'clicks', 'keystrokes', 'scrolls', 'focusChanges', 'pointerEvents'];
         for (const name of storeNames) {
@@ -1114,6 +1198,7 @@ export const saveToSessionStorage = () => {
         // Save a compressed version — most recent 200 per type, no DOM references.
         const data = {
             startTime: eventStore.startTime,
+            pageLoadCount: eventStore.pageLoadCount,
             mouseMoves: eventStore.mouseMoves.slice(-200),
             clicks: eventStore.clicks.slice(-200).map((c) => ({
                 x: c.x,
@@ -1171,6 +1256,7 @@ export const reset = () => {
     eventStore.focusChanges = [];
     eventStore.pointerEvents = [];
     eventStore.startTime = Date.now();
+    eventStore.pageLoadCount = 1;
     analysisCache = null;
 };
 

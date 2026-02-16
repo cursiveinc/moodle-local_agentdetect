@@ -155,6 +155,7 @@ export const collect = async() => {
         headless: detectHeadless(),
         extensions: await detectExtensions(),
         cometExtension: await detectCometExtension(),
+        cometRuntime: detectCometRuntimeArtifacts(),
         perplexityNetwork: detectPerplexityNetwork(),
         globals: detectAutomationGlobals(),
         domMarkers: detectDomMarkers(),
@@ -544,6 +545,10 @@ const probeExtensionResource = () => {
 /**
  * Detect network connections to Perplexity AI agent infrastructure.
  *
+ * Note: WebSocket connections from the extension's service worker don't appear
+ * in the page's performance entries. We check both resource entries and for
+ * broader perplexity.ai connections (e.g. suggest API, CDN).
+ *
  * @returns {Object} Network detection results.
  */
 const detectPerplexityNetwork = () => {
@@ -555,17 +560,96 @@ const detectPerplexityNetwork = () => {
     try {
         const entries = performance.getEntriesByType('resource');
         for (const entry of entries) {
-            if (/perplexity\.ai\/(agent|rest\/sse)/i.test(entry.name)) {
+            if (/perplexity\.ai/i.test(entry.name)) {
                 results.detected = true;
+                const isAgent = /\/(agent|rest\/sse)/i.test(entry.name);
                 results.signals.push({
-                    name: 'network.perplexity_agent',
+                    name: isAgent ? 'network.perplexity_agent' : 'network.perplexity_resource',
                     value: entry.name,
-                    weight: 9,
+                    weight: isAgent ? 9 : 6,
                 });
             }
         }
     } catch (e) {
         // PerformanceObserver not available.
+    }
+
+    return results;
+};
+
+/**
+ * Detect Comet-specific runtime artifacts.
+ *
+ * Comet's chrome.debugger attachment and content scripts leave observable
+ * side effects even though they run in isolated worlds.
+ *
+ * @returns {Object} Detection results.
+ */
+const detectCometRuntimeArtifacts = () => {
+    const results = {
+        detected: false,
+        signals: [],
+    };
+
+    // Check 1: chrome.debugger attachment may set navigator.webdriver at runtime.
+    // We already track this via initialWebdriverState, but also check for
+    // the debugger-attached timing behavior: events dispatched via CDP
+    // have isTrusted=true but arrive without natural input event chains.
+
+    // Check 2: Look for Comet's content script side effects.
+    // Content scripts that modify the page's DOM are visible to us.
+    // Comet injects styles and may add elements for its overlay UI.
+    try {
+        // Check for any elements with chrome-extension URL in inline styles.
+        const allElements = document.querySelectorAll('*');
+        for (const el of allElements) {
+            const style = el.getAttribute('style') || '';
+            if (style.includes(COMET_EXTENSION_ID)) {
+                results.detected = true;
+                results.signals.push({
+                    name: 'comet.runtime.inline_style',
+                    value: el.tagName,
+                    weight: 10,
+                });
+                break;
+            }
+        }
+    } catch (e) {
+        // Ignore scan errors.
+    }
+
+    // Check 3: Look for Web Accessible Resources from Comet's extensions.
+    // The perplexity.crx and comet_web_resources.crx may have web_accessible_resources.
+    try {
+        const scripts = document.querySelectorAll('script');
+        for (const script of scripts) {
+            const src = script.src || '';
+            if (src.includes('chrome-extension://') &&
+                (src.includes(COMET_EXTENSION_ID) || src.includes('perplexity') || src.includes('comet'))) {
+                results.detected = true;
+                results.signals.push({
+                    name: 'comet.runtime.script',
+                    value: src,
+                    weight: 10,
+                });
+            }
+        }
+    } catch (e) {
+        // Ignore.
+    }
+
+    // Check 4: Check if window has Comet-specific properties.
+    // Extensions that use window.postMessage or exposeInMainWorld may leak globals.
+    const cometGlobals = ['__comet__', '__perplexity__', '__pplx__', 'cometAgent', 'perplexityAgent'];
+    for (const name of cometGlobals) {
+        if (name in window) {
+            results.detected = true;
+            results.signals.push({
+                name: 'comet.runtime.global',
+                value: name,
+                weight: 10,
+            });
+        }
     }
 
     return results;
@@ -696,6 +780,7 @@ const calculateFingerprintScore = (signals) => {
         ...(signals.headless.signals || []),
         ...(signals.extensions.signals || []),
         ...(signals.cometExtension?.signals || []),
+        ...(signals.cometRuntime?.signals || []),
         ...(signals.perplexityNetwork?.signals || []),
         ...(signals.globals.signals || []),
         ...(signals.domMarkers.signals || []),

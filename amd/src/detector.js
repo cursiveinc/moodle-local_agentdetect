@@ -326,9 +326,12 @@ const calculateCombinedScore = (fingerprintScore, interactionScore, injectionSco
 const extractCometSignals = (fingerprint, interaction, injection) => {
     const signals = [];
 
-    // From fingerprint: Comet extension probing and webdriver change.
+    // From fingerprint: Comet extension probing, runtime artifacts, and webdriver change.
     if (fingerprint.cometExtension) {
         signals.push(...(fingerprint.cometExtension.signals || []));
+    }
+    if (fingerprint.cometRuntime) {
+        signals.push(...(fingerprint.cometRuntime.signals || []));
     }
     if (fingerprint.perplexityNetwork) {
         signals.push(...(fingerprint.perplexityNetwork.signals || []));
@@ -381,7 +384,8 @@ const calculateCometScore = (signals) => {
         s.name === 'comet.extension.script_injected' ||
         s.name === 'comet.extension.resource_probe' ||
         s.name === 'comet_agent_src' ||
-        s.name === 'network.perplexity_agent'
+        s.name === 'network.perplexity_agent' ||
+        s.name.startsWith('comet.runtime.')
     );
 
     if (hasDefinitiveSignal) {

@@ -161,7 +161,7 @@ export const startMonitoring = (options = {}) => {
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ['class', 'id', 'src', 'style'],
+        attributeFilter: ['class', 'id', 'src', 'href', 'style', 'data-comet', 'data-perplexity'],
     });
 
     if (debugMode) {
@@ -230,25 +230,47 @@ const handleMutations = (mutations) => {
                 if (node.nodeType === Node.ELEMENT_NODE) {
                     analyzeElement(node, 'mutation_added');
 
-                    // Comet-specific: detect overlay.js content script injection.
-                    if (node.tagName === 'SCRIPT' && node.src &&
-                        node.src.includes('npclhjbddhklpbnacpjloidibaggcgon')) {
+                    // Comet-specific: detect extension content script or resource injection.
+                    const src = node.getAttribute ? (node.getAttribute('src') || '') : '';
+                    const href = node.getAttribute ? (node.getAttribute('href') || '') : '';
+                    const resourceUrl = src || href;
+
+                    if (resourceUrl.includes('npclhjbddhklpbnacpjloidibaggcgon') ||
+                        resourceUrl.includes('chrome-extension://')) {
+                        const isComet = resourceUrl.includes('npclhjbddhklpbnacpjloidibaggcgon');
                         detectionStore.injectedElements.push({
                             timestamp: Date.now(),
-                            source: 'comet_overlay_injection',
-                            tagName: 'SCRIPT',
-                            id: null,
-                            className: null,
+                            source: isComet ? 'comet_extension_injection' : 'chrome_extension_injection',
+                            tagName: node.tagName,
+                            id: node.id || null,
+                            className: node.className || null,
                             findings: [{
-                                type: 'comet_agentic',
-                                name: 'comet_overlay_js',
-                                value: node.src,
+                                type: isComet ? 'comet_agentic' : 'extension',
+                                name: isComet ? 'comet_overlay_js' : 'chrome_ext_injection',
+                                value: resourceUrl,
                                 weight: 10,
                             }],
                         });
                         if (debugMode) {
-                            Log.debug('[AgentDetect/Injection] Comet overlay.js injected', node.src);
+                            Log.debug('[AgentDetect/Injection] Extension resource injected',
+                                node.tagName, resourceUrl);
                         }
+                    }
+
+                    // Check for elements with shadow roots (common for extension UI).
+                    if (node.shadowRoot) {
+                        detectionStore.injectedElements.push({
+                            timestamp: Date.now(),
+                            source: 'shadow_dom_injection',
+                            tagName: node.tagName,
+                            id: node.id || null,
+                            className: node.className || null,
+                            findings: [{
+                                type: 'shadow_dom',
+                                name: 'injected_shadow_root',
+                                weight: 7,
+                            }],
+                        });
                     }
 
                     // Also scan children of added nodes.
