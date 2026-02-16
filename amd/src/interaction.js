@@ -61,6 +61,8 @@ const eventStore = {
     pointerEvents: [],
     startTime: Date.now(),
     pageLoadCount: 1,
+    pageStartTime: Date.now(), // Timestamp when the current page loaded (not overwritten by restore).
+    perPageStats: [], // Per-page {moves, clicks, keys, scrolls} from prior pages.
 };
 
 /**
@@ -99,8 +101,11 @@ export const startMonitoring = (options = {}) => {
     isMonitoring = true;
     contextId = options.contextId || null;
     eventStore.startTime = Date.now();
+    eventStore.pageStartTime = Date.now();
 
     // Restore accumulated events from prior pages in this session.
+    // Note: loadFromSessionStorage overwrites startTime with the session origin
+    // but pageStartTime stays as the current page's load time.
     loadFromSessionStorage();
 
     // Mouse movement tracking.
@@ -501,6 +506,8 @@ export const analyze = () => {
     results.anomalies.push(...analyzeActionBursts());
     results.anomalies.push(...analyzeCDPClickPatterns());
     results.anomalies.push(...analyzePointerEvents());
+    results.anomalies.push(...analyzePerPageRatio());
+    results.anomalies.push(...analyzeScrollClickCorrelation());
 
     // Calculate overall score.
     results.score = calculateInteractionScore(results.anomalies);
@@ -735,6 +742,17 @@ const analyzeKeystrokes = () => {
     const anomalies = [];
     const keystrokes = eventStore.keystrokes.filter((k) => k.type === 'down');
 
+    // Zero keystrokes across multiple pages with significant click activity
+    // is a strong agent indicator. Humans press Tab, Space, Enter, arrow keys
+    // even on MCQ quizzes. Require 2+ pages to avoid penalising the first page load.
+    if (keystrokes.length === 0 && eventStore.clicks.length >= 5 && eventStore.pageLoadCount >= 2) {
+        anomalies.push({
+            name: 'comet.zero_keystrokes',
+            value: 0,
+            weight: 9,
+        });
+    }
+
     if (keystrokes.length < CONFIG.minKeystrokes) {
         return anomalies;
     }
@@ -957,12 +975,15 @@ const calculateInteractionScore = (anomalies) => {
     const hasLowMouseRatio = anomalies.some(
         (a) => a.name === 'comet.low_mouse_to_action_ratio' && a.weight >= 10
     );
+    const hasZeroKeystrokes = anomalies.some((a) => a.name === 'comet.zero_keystrokes');
+    const hasLowPerPageRatio = anomalies.some((a) => a.name === 'comet.low_per_page_mouse_ratio');
 
     // Multiple strong signals = high confidence agent.
     let multiplier = 1.0;
     const strongSignals = [
         hasCenterPrecision, hasTeleport, hasNoMovement,
         hasUltraPrecise, hasLowMouseRatio,
+        hasZeroKeystrokes, hasLowPerPageRatio,
     ].filter(Boolean).length;
     if (strongSignals >= 3) {
         multiplier = 1.5; // 3+ strong signals = very likely agent.
@@ -982,8 +1003,9 @@ const calculateInteractionScore = (anomalies) => {
 
     if (totalEvents < 10) {
         // Very sparse — heavily discount unless smoking-gun signals present.
-        // Center_precision and ultra_precise_center are reliable even with few events.
-        const hasReliableSignal = hasCenterPrecision || hasUltraPrecise || hasLowMouseRatio;
+        // Center_precision, ultra_precise_center, zero keystrokes are reliable even with few events.
+        const hasReliableSignal = hasCenterPrecision || hasUltraPrecise || hasLowMouseRatio
+            || hasZeroKeystrokes || hasLowPerPageRatio;
         if (!hasReliableSignal) {
             rawScore *= 0.3; // 70% discount for ratio-only signals with sparse data.
         } else {
@@ -1162,6 +1184,92 @@ const analyzePointerEvents = () => {
 };
 
 /**
+ * Analyze per-page mouse-to-click ratios.
+ *
+ * Cross-page accumulation can mask an agent's low per-page mouse activity.
+ * An agent generating 0-3 mousemoves per page accumulates 200+ across 10 pages,
+ * making the aggregate ratio look human-like. Per-page analysis catches this.
+ *
+ * @returns {Array} Anomaly signals.
+ */
+const analyzePerPageRatio = () => {
+    const anomalies = [];
+
+    // Build stats array: prior pages from perPageStats + current page computed live.
+    const pageStart = eventStore.pageStartTime;
+    const currentPageMoves = eventStore.mouseMoves.filter((m) => m.timestamp >= pageStart).length;
+    const currentPageClicks = eventStore.clicks.filter((c) => c.timestamp >= pageStart).length;
+    const allPageStats = [
+        ...eventStore.perPageStats,
+        {moves: currentPageMoves, clicks: currentPageClicks},
+    ];
+
+    // Need at least 3 pages with click activity to be meaningful.
+    const pagesWithClicks = allPageStats.filter((p) => p.clicks >= 1);
+    if (pagesWithClicks.length < 3) {
+        return anomalies;
+    }
+
+    // Count pages where the mouse-to-click ratio is agent-like (< 3 moves per click).
+    const lowRatioPages = pagesWithClicks.filter((p) => p.moves / p.clicks < 3).length;
+    const lowRatioFraction = lowRatioPages / pagesWithClicks.length;
+
+    if (lowRatioFraction >= 0.7) {
+        anomalies.push({
+            name: 'comet.low_per_page_mouse_ratio',
+            value: lowRatioFraction,
+            weight: 10,
+        });
+    }
+
+    return anomalies;
+};
+
+/**
+ * Analyze scroll-then-click correlation.
+ *
+ * Agents use scrollIntoView() before each click, producing a consistent
+ * pattern of scroll event immediately followed by click. Humans scroll
+ * to read content and click sporadically — the scroll-click pairing is
+ * much less consistent.
+ *
+ * @returns {Array} Anomaly signals.
+ */
+const analyzeScrollClickCorrelation = () => {
+    const anomalies = [];
+    const clicks = eventStore.clicks;
+    const scrolls = eventStore.scrolls;
+
+    if (clicks.length < 5 || scrolls.length < 5) {
+        return anomalies;
+    }
+
+    // For each click, check if a scroll occurred within 500ms before it.
+    let scrollPrecededClicks = 0;
+
+    for (const click of clicks) {
+        const hasRecentScroll = scrolls.some((s) =>
+            s.timestamp > click.timestamp - 500 &&
+            s.timestamp < click.timestamp
+        );
+        if (hasRecentScroll) {
+            scrollPrecededClicks++;
+        }
+    }
+
+    const ratio = scrollPrecededClicks / clicks.length;
+    if (ratio >= 0.7) {
+        anomalies.push({
+            name: 'comet.scroll_then_click',
+            value: ratio,
+            weight: 8,
+        });
+    }
+
+    return anomalies;
+};
+
+/**
  * Get the sessionStorage key for cross-page event accumulation.
  *
  * @returns {string} Storage key scoped by context.
@@ -1205,6 +1313,11 @@ const loadFromSessionStorage = () => {
 
         // Don't restore hovers — they hold element references which can't be serialised.
 
+        // Restore per-page statistics from prior pages.
+        if (data.perPageStats && Array.isArray(data.perPageStats)) {
+            eventStore.perPageStats = data.perPageStats;
+        }
+
         // Invalidate analysis cache since we loaded new data.
         analysisCache = null;
     } catch (e) {
@@ -1220,10 +1333,22 @@ const loadFromSessionStorage = () => {
  */
 export const saveToSessionStorage = () => {
     try {
+        // Compute current-page stats before saving.
+        const pageStart = eventStore.pageStartTime;
+        const currentPageMoves = eventStore.mouseMoves.filter((m) => m.timestamp >= pageStart).length;
+        const currentPageClicks = eventStore.clicks.filter((c) => c.timestamp >= pageStart).length;
+        const currentPageKeys = eventStore.keystrokes.filter((k) => k.timestamp >= pageStart).length;
+        const currentPageScrolls = eventStore.scrolls.filter((s) => s.timestamp >= pageStart).length;
+        const updatedPerPageStats = [
+            ...eventStore.perPageStats,
+            {moves: currentPageMoves, clicks: currentPageClicks, keys: currentPageKeys, scrolls: currentPageScrolls},
+        ].slice(-20); // Keep last 20 pages.
+
         // Save a compressed version — most recent 200 per type, no DOM references.
         const data = {
             startTime: eventStore.startTime,
             pageLoadCount: eventStore.pageLoadCount,
+            perPageStats: updatedPerPageStats,
             mouseMoves: eventStore.mouseMoves.slice(-200),
             clicks: eventStore.clicks.slice(-200).map((c) => ({
                 x: c.x,
@@ -1289,7 +1414,9 @@ export const reset = () => {
     eventStore.focusChanges = [];
     eventStore.pointerEvents = [];
     eventStore.startTime = Date.now();
+    eventStore.pageStartTime = Date.now();
     eventStore.pageLoadCount = 1;
+    eventStore.perPageStats = [];
     analysisCache = null;
 };
 

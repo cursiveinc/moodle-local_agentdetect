@@ -399,12 +399,17 @@ const calculateCometScore = (signals) => {
 
     // Tier 1: physically-impossible signals (low false-positive risk).
     // These indicate behaviour a human physically cannot produce.
-    const TIER1_NAMES = [
-        'comet.ultra_precise_center',
-        'comet.low_mouse_to_action_ratio', // Only the extreme variant (weight 10, movePerAction < 2).
+    const TIER1_WEIGHTED = [
+        'comet.ultra_precise_center', // Clicks land within 2px of center.
+        'comet.low_mouse_to_action_ratio', // Only the extreme variant (weight 10, movePerClick < 2).
+        'comet.low_per_page_mouse_ratio', // Per-page ratio consistently agent-like.
+    ];
+    const TIER1_ANY = [
+        'comet.zero_keystrokes', // Zero keystrokes across entire quiz.
     ];
     const tier1 = signals.filter((s) =>
-        TIER1_NAMES.includes(s.name) && s.weight >= 10
+        (TIER1_WEIGHTED.includes(s.name) && s.weight >= 10) ||
+        TIER1_ANY.includes(s.name)
     );
 
     // Tier 2: temporal/behavioral signals (higher false-positive risk).
