@@ -30,6 +30,7 @@ define('AJAX_SCRIPT', true);
 define('NO_DEBUG_DISPLAY', true);
 
 require_once(__DIR__ . '/../../config.php');
+require_login();
 
 // Read beacon data.
 $input = file_get_contents('php://input');
@@ -55,12 +56,6 @@ foreach ($required as $field) {
 
 // Validate session.
 if (!confirm_sesskey($data['sesskey'])) {
-    http_response_code(403);
-    exit;
-}
-
-// Must be logged in.
-if (!isloggedin() || isguestuser()) {
     http_response_code(403);
     exit;
 }

@@ -37,7 +37,7 @@ import Log from 'core/log';
  */
 let config = {
     enabled: true,
-    reportInterval: 30000, // ms - how often to report to server.
+    reportInterval: 30000, // Ms - how often to report to server.
     minReportScore: 10, // Minimum combined score to report.
     contextId: null,
     sessionKey: null,
@@ -162,7 +162,7 @@ const restoreOrCreateSessionId = () => {
             }
         }
     } catch (e) {
-        // sessionStorage unavailable or corrupt — generate fresh.
+        // SessionStorage unavailable or corrupt — generate fresh.
     }
 
     const newId = generateSessionId();

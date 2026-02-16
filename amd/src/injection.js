@@ -222,66 +222,72 @@ const scanExistingDOM = () => {
  * @param {MutationRecord[]} mutations List of mutations.
  * @returns {void}
  */
+/**
+ * Process a single added element node for extension injection signals.
+ *
+ * @param {Element} node The added element.
+ */
+const processAddedNode = (node) => {
+    analyzeElement(node, 'mutation_added');
+
+    // Comet-specific: detect extension content script or resource injection.
+    const src = node.getAttribute ? (node.getAttribute('src') || '') : '';
+    const href = node.getAttribute ? (node.getAttribute('href') || '') : '';
+    const resourceUrl = src || href;
+
+    if (resourceUrl.includes('npclhjbddhklpbnacpjloidibaggcgon') ||
+        resourceUrl.includes('chrome-extension://')) {
+        const isComet = resourceUrl.includes('npclhjbddhklpbnacpjloidibaggcgon');
+        detectionStore.injectedElements.push({
+            timestamp: Date.now(),
+            source: isComet ? 'comet_extension_injection' : 'chrome_extension_injection',
+            tagName: node.tagName,
+            id: node.id || null,
+            className: node.className || null,
+            findings: [{
+                type: isComet ? 'comet_agentic' : 'extension',
+                name: isComet ? 'comet_overlay_js' : 'chrome_ext_injection',
+                value: resourceUrl,
+                weight: 10,
+            }],
+        });
+        if (debugMode) {
+            Log.debug('[AgentDetect/Injection] Extension resource injected', node.tagName, resourceUrl);
+        }
+    }
+
+    // Check for elements with shadow roots (common for extension UI).
+    if (node.shadowRoot) {
+        detectionStore.injectedElements.push({
+            timestamp: Date.now(),
+            source: 'shadow_dom_injection',
+            tagName: node.tagName,
+            id: node.id || null,
+            className: node.className || null,
+            findings: [{
+                type: 'shadow_dom',
+                name: 'injected_shadow_root',
+                weight: 7,
+            }],
+        });
+    }
+
+    // Also scan children of added nodes.
+    const children = node.querySelectorAll ? node.querySelectorAll('*') : [];
+    for (const child of children) {
+        analyzeElement(child, 'mutation_added_child');
+    }
+};
+
 const handleMutations = (mutations) => {
     for (const mutation of mutations) {
         if (mutation.type === 'childList') {
-            // New nodes added.
             for (const node of mutation.addedNodes) {
                 if (node.nodeType === Node.ELEMENT_NODE) {
-                    analyzeElement(node, 'mutation_added');
-
-                    // Comet-specific: detect extension content script or resource injection.
-                    const src = node.getAttribute ? (node.getAttribute('src') || '') : '';
-                    const href = node.getAttribute ? (node.getAttribute('href') || '') : '';
-                    const resourceUrl = src || href;
-
-                    if (resourceUrl.includes('npclhjbddhklpbnacpjloidibaggcgon') ||
-                        resourceUrl.includes('chrome-extension://')) {
-                        const isComet = resourceUrl.includes('npclhjbddhklpbnacpjloidibaggcgon');
-                        detectionStore.injectedElements.push({
-                            timestamp: Date.now(),
-                            source: isComet ? 'comet_extension_injection' : 'chrome_extension_injection',
-                            tagName: node.tagName,
-                            id: node.id || null,
-                            className: node.className || null,
-                            findings: [{
-                                type: isComet ? 'comet_agentic' : 'extension',
-                                name: isComet ? 'comet_overlay_js' : 'chrome_ext_injection',
-                                value: resourceUrl,
-                                weight: 10,
-                            }],
-                        });
-                        if (debugMode) {
-                            Log.debug('[AgentDetect/Injection] Extension resource injected',
-                                node.tagName, resourceUrl);
-                        }
-                    }
-
-                    // Check for elements with shadow roots (common for extension UI).
-                    if (node.shadowRoot) {
-                        detectionStore.injectedElements.push({
-                            timestamp: Date.now(),
-                            source: 'shadow_dom_injection',
-                            tagName: node.tagName,
-                            id: node.id || null,
-                            className: node.className || null,
-                            findings: [{
-                                type: 'shadow_dom',
-                                name: 'injected_shadow_root',
-                                weight: 7,
-                            }],
-                        });
-                    }
-
-                    // Also scan children of added nodes.
-                    const children = node.querySelectorAll ? node.querySelectorAll('*') : [];
-                    for (const child of children) {
-                        analyzeElement(child, 'mutation_added_child');
-                    }
+                    processAddedNode(node);
                 }
             }
         } else if (mutation.type === 'attributes') {
-            // Attribute changed.
             analyzeElement(mutation.target, 'mutation_attribute');
         }
     }

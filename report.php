@@ -106,7 +106,7 @@ $PAGE->set_heading('Agent Detection Report');
 echo $OUTPUT->header();
 
 // Get all users with signals for the dropdown.
-$usersWithSignals = $DB->get_records_sql(
+$userswithsignals = $DB->get_records_sql(
     "SELECT DISTINCT u.id, u.firstname, u.lastname, u.email,
             MAX(s.combinedscore) as maxscore,
             COUNT(s.id) as signalcount
@@ -127,9 +127,9 @@ echo html_writer::start_tag('form', ['method' => 'get', 'action' => $PAGE->url->
 echo html_writer::start_div('form-group mr-3 mb-2');
 echo html_writer::label('User: ', 'userid', true, ['class' => 'mr-2']);
 $useroptions = [0 => 'All Users'];
-foreach ($usersWithSignals as $u) {
-    $scoreLabel = $u->maxscore >= 70 ? ' ⚠️' : ($u->maxscore >= 40 ? ' ⚡' : '');
-    $useroptions[$u->id] = fullname($u) . " ({$u->signalcount} signals, max: {$u->maxscore}){$scoreLabel}";
+foreach ($userswithsignals as $u) {
+    $scorelabel = $u->maxscore >= 70 ? ' ⚠️' : ($u->maxscore >= 40 ? ' ⚡' : '');
+    $useroptions[$u->id] = fullname($u) . " ({$u->signalcount} signals, max: {$u->maxscore}){$scorelabel}";
 }
 echo html_writer::select($useroptions, 'userid', $userid, null, ['class' => 'form-control', 'id' => 'userid']);
 echo html_writer::end_div();
@@ -199,8 +199,8 @@ $limit = ($userid || $sessionid) ? 200 : 50;
 
 // Section header.
 if ($userid) {
-    $selectedUser = $DB->get_record('user', ['id' => $userid]);
-    echo html_writer::tag('h3', 'Signals for ' . fullname($selectedUser));
+    $selecteduser = $DB->get_record('user', ['id' => $userid]);
+    echo html_writer::tag('h3', 'Signals for ' . fullname($selecteduser));
 } else {
     echo html_writer::tag('h3', 'Stored Detection Signals');
 }

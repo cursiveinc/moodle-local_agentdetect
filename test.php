@@ -65,8 +65,11 @@ echo html_writer::tag('p', 'Click these buttons:', ['style' => 'margin-top: 15px
 echo html_writer::tag('button', 'Button 1', ['class' => 'btn btn-primary', 'style' => 'margin-right: 10px;']);
 echo html_writer::tag('button', 'Button 2', ['class' => 'btn btn-secondary', 'style' => 'margin-right: 10px;']);
 echo html_writer::tag('button', 'Button 3', ['class' => 'btn btn-info']);
-echo html_writer::tag('div', 'Scroll area - add more content here to test scrolling...',
-    ['style' => 'height: 200px; overflow-y: scroll; margin-top: 15px; background: #fafafa; padding: 10px;']);
+echo html_writer::tag(
+    'div',
+    'Scroll area - add more content here to test scrolling...',
+    ['style' => 'height: 200px; overflow-y: scroll; margin-top: 15px; background: #fafafa; padding: 10px;']
+);
 echo html_writer::end_div();
 
 // Inline JavaScript to run detection and display results.

@@ -24,8 +24,6 @@
 
 namespace local_agentdetect;
 
-defined('MOODLE_INTERNAL') || die();
-
 /**
  * Manages storage and processing of agent detection signals.
  *
@@ -34,7 +32,6 @@ defined('MOODLE_INTERNAL') || die();
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class signal_manager {
-
     /** @var int Threshold score for automatic flagging. */
     const FLAG_THRESHOLD_HIGH = 70;
 

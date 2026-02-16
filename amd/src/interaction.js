@@ -36,14 +36,14 @@ const CONFIG = {
     minKeystrokes: 10,
 
     // Thresholds for anomaly detection.
-    perfectTimingVariance: 5, // ms - variance below this is suspicious.
-    minHumanReactionTime: 50, // ms - clicks faster than this are suspicious.
-    maxMouseSpeed: 10000, // px/ms - movements faster than this are suspicious.
-    centerClickTolerance: 5, // px - clicks within this of element center are suspicious.
+    perfectTimingVariance: 5, // Ms - variance below this is suspicious.
+    minHumanReactionTime: 50, // Ms - clicks faster than this are suspicious.
+    maxMouseSpeed: 10000, // Px/ms - movements faster than this are suspicious.
+    centerClickTolerance: 5, // Px - clicks within this of element center are suspicious.
 
     // Sampling configuration.
     maxStoredEvents: 500,
-    analysisInterval: 10000, // ms - how often to run analysis.
+    analysisInterval: 10000, // Ms - how often to run analysis.
 };
 
 /**
@@ -978,7 +978,7 @@ const calculateInteractionScore = (anomalies) => {
 
     if (totalEvents < 10) {
         // Very sparse — heavily discount unless smoking-gun signals present.
-        // center_precision is reliable even with few events; teleport_pattern is not.
+        // Center_precision is reliable even with few events; teleport_pattern is not.
         const hasReliableSignal = hasCenterPrecision || hasUltraPrecise || hasNoTrail || hasLowMouseRatio;
         if (!hasReliableSignal) {
             rawScore *= 0.3; // 70% discount for ratio-only signals with sparse data.
@@ -1183,7 +1183,7 @@ const loadFromSessionStorage = () => {
         // Invalidate analysis cache since we loaded new data.
         analysisCache = null;
     } catch (e) {
-        // sessionStorage unavailable or data corrupt — start fresh.
+        // SessionStorage unavailable or data corrupt — start fresh.
     }
 };
 

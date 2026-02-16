@@ -268,6 +268,7 @@ const detectHeadless = () => {
             if (result.state === 'denied') {
                 results.signals.push({name: 'permissions.notifications.denied', value: true, weight: 3});
             }
+            return result;
         }).catch(() => {
             // Ignore permission errors.
         });
@@ -276,6 +277,33 @@ const detectHeadless = () => {
     results.detected = results.signals.some((s) => s.weight >= 7);
 
     return results;
+};
+
+/**
+ * Scan stylesheets for known extension URLs.
+ *
+ * @param {Object} results Results object to populate.
+ */
+const scanExtensionStylesheets = (results) => {
+    const stylesheets = Array.from(document.styleSheets);
+    for (const sheet of stylesheets) {
+        try {
+            if (!sheet.href || !sheet.href.startsWith('chrome-extension://')) {
+                continue;
+            }
+            const matchedExt = KNOWN_EXTENSIONS.find((ext) => ext.pattern.test(sheet.href));
+            if (matchedExt) {
+                results.detected.push(matchedExt.name);
+                results.signals.push({
+                    name: `extension.stylesheet.${matchedExt.id}`,
+                    value: sheet.href,
+                    weight: matchedExt.weight,
+                });
+            }
+        } catch (e) {
+            // Cross-origin stylesheet, can't inspect.
+        }
+    }
 };
 
 /**
@@ -321,25 +349,7 @@ const detectExtensions = async() => {
     }
 
     // Method 5: Scan for injected stylesheets from extensions.
-    const stylesheets = Array.from(document.styleSheets);
-    for (const sheet of stylesheets) {
-        try {
-            if (sheet.href && sheet.href.startsWith('chrome-extension://')) {
-                for (const ext of KNOWN_EXTENSIONS) {
-                    if (ext.pattern.test(sheet.href)) {
-                        results.detected.push(ext.name);
-                        results.signals.push({
-                            name: `extension.stylesheet.${ext.id}`,
-                            value: sheet.href,
-                            weight: ext.weight,
-                        });
-                    }
-                }
-            }
-        } catch (e) {
-            // Cross-origin stylesheet, can't inspect.
-        }
-    }
+    scanExtensionStylesheets(results);
 
     return results;
 };
@@ -504,42 +514,37 @@ const detectCometExtension = async() => {
  *
  * @returns {Promise<string|null>} Path that loaded successfully, or null.
  */
-const probeExtensionResource = () => {
-    return new Promise((resolve) => {
-        const baseUrl = `chrome-extension://${COMET_EXTENSION_ID}/`;
-        let resolved = false;
+const probeExtensionResource = async() => {
+    const baseUrl = `chrome-extension://${COMET_EXTENSION_ID}/`;
 
-        const done = (path) => {
-            if (!resolved) {
-                resolved = true;
+    /**
+     * Try loading a single image resource.
+     *
+     * @param {string} path Resource path to probe.
+     * @returns {Promise<string|null>} The path if loaded, null otherwise.
+     */
+    const probeSingle = (path) => {
+        return new Promise((resolve) => {
+            const img = new Image();
+            const timer = setTimeout(() => resolve(null), 1000);
+            img.onload = () => {
+                clearTimeout(timer);
                 resolve(path);
-            }
-        };
-
-        // Probe each resource path in parallel using Promise.all.
-        const probes = COMET_RESOURCE_PATHS.map((path) => {
-            return new Promise((probeResolve) => {
-                const img = new Image();
-                img.onload = () => {
-                    done(path);
-                    probeResolve(true);
-                };
-                img.onerror = () => {
-                    probeResolve(false);
-                };
-                img.src = baseUrl + path;
-            });
+            };
+            img.onerror = () => {
+                clearTimeout(timer);
+                resolve(null);
+            };
+            img.src = baseUrl + path;
         });
+    };
 
-        Promise.all(probes).then(() => {
-            done(null);
-        });
-
-        // Timeout after 1 second.
-        setTimeout(() => {
-            done(null);
-        }, 1000);
-    });
+    try {
+        const results = await Promise.all(COMET_RESOURCE_PATHS.map(probeSingle));
+        return results.find((r) => r !== null) || null;
+    } catch (e) {
+        return null;
+    }
 };
 
 /**
@@ -596,43 +601,34 @@ const detectCometRuntimeArtifacts = () => {
     // the debugger-attached timing behavior: events dispatched via CDP
     // have isTrusted=true but arrive without natural input event chains.
 
-    // Check 2: Look for Comet's content script side effects.
-    // Content scripts that modify the page's DOM are visible to us.
-    // Comet injects styles and may add elements for its overlay UI.
+    // Check 2: Look for Comet's content script side effects in inline styles.
     try {
-        // Check for any elements with chrome-extension URL in inline styles.
-        const allElements = document.querySelectorAll('*');
-        for (const el of allElements) {
-            const style = el.getAttribute('style') || '';
-            if (style.includes(COMET_EXTENSION_ID)) {
-                results.detected = true;
-                results.signals.push({
-                    name: 'comet.runtime.inline_style',
-                    value: el.tagName,
-                    weight: 10,
-                });
-                break;
-            }
+        const allElements = document.querySelectorAll(`[style*="${COMET_EXTENSION_ID}"]`);
+        if (allElements.length > 0) {
+            results.detected = true;
+            results.signals.push({
+                name: 'comet.runtime.inline_style',
+                value: allElements[0].tagName,
+                weight: 10,
+            });
         }
     } catch (e) {
         // Ignore scan errors.
     }
 
     // Check 3: Look for Web Accessible Resources from Comet's extensions.
-    // The perplexity.crx and comet_web_resources.crx may have web_accessible_resources.
     try {
-        const scripts = document.querySelectorAll('script');
-        for (const script of scripts) {
+        const cometScripts = document.querySelectorAll(
+            'script[src*="chrome-extension://"]'
+        );
+        for (const script of cometScripts) {
             const src = script.src || '';
-            if (src.includes('chrome-extension://') &&
-                (src.includes(COMET_EXTENSION_ID) || src.includes('perplexity') || src.includes('comet'))) {
-                results.detected = true;
-                results.signals.push({
-                    name: 'comet.runtime.script',
-                    value: src,
-                    weight: 10,
-                });
+            const isComet = src.includes(COMET_EXTENSION_ID) || src.includes('perplexity') || src.includes('comet');
+            if (!isComet) {
+                continue;
             }
+            results.detected = true;
+            results.signals.push({name: 'comet.runtime.script', value: src, weight: 10});
         }
     } catch (e) {
         // Ignore.

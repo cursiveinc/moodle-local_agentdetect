@@ -24,8 +24,6 @@
 
 namespace local_agentdetect\external;
 
-defined('MOODLE_INTERNAL') || die();
-
 use core_external\external_api;
 use core_external\external_function_parameters;
 use core_external\external_single_structure;
@@ -42,7 +40,6 @@ use local_agentdetect\signal_manager;
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 class report_signals extends external_api {
-
     /**
      * Describes the parameters for this function.
      *
