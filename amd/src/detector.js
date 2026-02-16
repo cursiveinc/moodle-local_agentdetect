@@ -20,7 +20,7 @@
  * and reports to the Moodle backend.
  *
  * @module     local_agentdetect/detector
- * @copyright  2024 Your Institution
+ * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 

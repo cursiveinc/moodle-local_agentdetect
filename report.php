@@ -18,14 +18,14 @@
  * Report page to view stored agent detection signals.
  *
  * @package    local_agentdetect
- * @copyright  2024 Your Institution
+ * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once(__DIR__ . '/../../config.php');
 
 require_login();
-require_capability('moodle/site:config', context_system::instance());
+require_capability('local/agentdetect:viewsignals', context_system::instance());
 
 // Get filter parameters.
 $userid = optional_param('userid', 0, PARAM_INT);
@@ -100,8 +100,8 @@ if ($download === 'json') {
 
 $PAGE->set_url(new moodle_url('/local/agentdetect/report.php', ['userid' => $userid, 'sessionid' => $sessionid]));
 $PAGE->set_context(context_system::instance());
-$PAGE->set_title('Agent Detection Report');
-$PAGE->set_heading('Agent Detection Report');
+$PAGE->set_title(get_string('report:title', 'local_agentdetect'));
+$PAGE->set_heading(get_string('report:title', 'local_agentdetect'));
 
 echo $OUTPUT->header();
 
@@ -119,14 +119,14 @@ $userswithsignals = $DB->get_records_sql(
 // Filter form.
 echo html_writer::start_div('card mb-4');
 echo html_writer::start_div('card-body');
-echo html_writer::tag('h5', 'Filter Signals', ['class' => 'card-title']);
+echo html_writer::tag('h5', get_string('report:filtersignals', 'local_agentdetect'), ['class' => 'card-title']);
 
 echo html_writer::start_tag('form', ['method' => 'get', 'action' => $PAGE->url->out_omit_querystring(), 'class' => 'form-inline']);
 
 // User dropdown.
 echo html_writer::start_div('form-group mr-3 mb-2');
 echo html_writer::label('User: ', 'userid', true, ['class' => 'mr-2']);
-$useroptions = [0 => 'All Users'];
+$useroptions = [0 => get_string('report:allusers', 'local_agentdetect')];
 foreach ($userswithsignals as $u) {
     $scorelabel = $u->maxscore >= 70 ? ' ⚠️' : ($u->maxscore >= 40 ? ' ⚡' : '');
     $useroptions[$u->id] = fullname($u) . " ({$u->signalcount} signals, max: {$u->maxscore}){$scorelabel}";
@@ -147,7 +147,7 @@ if ($userid) {
 
     echo html_writer::start_div('form-group mr-3 mb-2');
     echo html_writer::label('Session: ', 'sessionid', true, ['class' => 'mr-2']);
-    $sessionoptions = ['' => 'All Sessions'];
+    $sessionoptions = ['' => get_string('report:allsessions', 'local_agentdetect')];
     foreach ($sessions as $s) {
         $sessionoptions[$s->sessionid] = $s->sessionid . ' (max: ' . ($s->maxscore ?? '?') . ')';
     }
@@ -155,11 +155,12 @@ if ($userid) {
     echo html_writer::end_div();
 }
 
-echo html_writer::tag('button', 'Filter', ['type' => 'submit', 'class' => 'btn btn-primary mb-2 mr-2']);
+echo html_writer::tag('button', get_string('report:filter', 'local_agentdetect'),
+    ['type' => 'submit', 'class' => 'btn btn-primary mb-2 mr-2']);
 if ($userid || $sessionid) {
     echo html_writer::link(
         new moodle_url('/local/agentdetect/report.php'),
-        'Clear Filters',
+        get_string('report:clearfilters', 'local_agentdetect'),
         ['class' => 'btn btn-secondary mb-2 mr-2']
     );
 }
@@ -200,9 +201,9 @@ $limit = ($userid || $sessionid) ? 200 : 50;
 // Section header.
 if ($userid) {
     $selecteduser = $DB->get_record('user', ['id' => $userid]);
-    echo html_writer::tag('h3', 'Signals for ' . fullname($selecteduser));
+    echo html_writer::tag('h3', get_string('report:signalsfor', 'local_agentdetect', fullname($selecteduser)));
 } else {
-    echo html_writer::tag('h3', 'Stored Detection Signals');
+    echo html_writer::tag('h3', get_string('report:storedsignals', 'local_agentdetect'));
 }
 
 // Get signals.
@@ -211,13 +212,14 @@ $signals = $DB->get_records_sql(
        FROM {local_agentdetect_signals} s
        JOIN {user} u ON u.id = s.userid
        {$wheresql}
-      ORDER BY s.timecreated DESC
-      LIMIT {$limit}",
-    $params
+      ORDER BY s.timecreated DESC",
+    $params,
+    0,
+    $limit
 );
 
 if (empty($signals)) {
-    echo html_writer::div('No signals recorded yet.', 'alert alert-info');
+    echo html_writer::div(get_string('report:nosignals', 'local_agentdetect'), 'alert alert-info');
 } else {
     // Summary stats.
     $countparams = $params;
@@ -243,15 +245,21 @@ if (empty($signals)) {
             ['userid' => $userid]
         );
 
-        echo html_writer::start_div('alert alert-secondary');
-        echo html_writer::tag('strong', 'User Summary: ');
-        echo "Max Score: <strong>{$stats->maxscore}</strong> | ";
-        echo "Avg Score: <strong>" . round($stats->avgscore, 1) . "</strong> | ";
-        echo "HIGH_CONFIDENCE: <span class='badge badge-danger'>{$stats->high_count}</span> | ";
-        echo "PROBABLE: <span class='badge badge-warning'>{$stats->probable_count}</span> | ";
-        echo "SUSPICIOUS: <span class='badge badge-warning'>{$stats->suspicious_count}</span> | ";
-        echo "LIKELY_HUMAN: <span class='badge badge-success'>{$stats->human_count}</span>";
-        echo html_writer::end_div();
+        $summaryparts = [];
+        $summaryparts[] = html_writer::tag('strong', get_string('report:usersummary', 'local_agentdetect'));
+        $summaryparts[] = get_string('report:maxscore', 'local_agentdetect') . ': '
+            . html_writer::tag('strong', $stats->maxscore) . ' | ';
+        $summaryparts[] = get_string('report:avgscore', 'local_agentdetect') . ': '
+            . html_writer::tag('strong', round($stats->avgscore, 1)) . ' | ';
+        $summaryparts[] = 'HIGH_CONFIDENCE: '
+            . html_writer::tag('span', $stats->high_count, ['class' => 'badge badge-danger']) . ' | ';
+        $summaryparts[] = 'PROBABLE: '
+            . html_writer::tag('span', $stats->probable_count, ['class' => 'badge badge-warning']) . ' | ';
+        $summaryparts[] = 'SUSPICIOUS: '
+            . html_writer::tag('span', $stats->suspicious_count, ['class' => 'badge badge-warning']) . ' | ';
+        $summaryparts[] = 'LIKELY_HUMAN: '
+            . html_writer::tag('span', $stats->human_count, ['class' => 'badge badge-success']);
+        echo html_writer::div(implode(' ', $summaryparts), 'alert alert-secondary');
     }
 
     // Signals table.
@@ -391,18 +399,20 @@ if (empty($signals)) {
 
 // Flags section (only show on main view).
 if (!$userid) {
-    echo html_writer::tag('h3', 'User Flags', ['style' => 'margin-top: 30px;']);
+    echo html_writer::tag('h3', get_string('report:userflags', 'local_agentdetect'), ['style' => 'margin-top: 30px;']);
 
     $flags = $DB->get_records_sql(
         "SELECT f.*, u.firstname, u.lastname, u.email
            FROM {local_agentdetect_flags} f
            JOIN {user} u ON u.id = f.userid
-          ORDER BY f.maxscore DESC, f.timemodified DESC
-          LIMIT 50"
+          ORDER BY f.maxscore DESC, f.timemodified DESC",
+        [],
+        0,
+        50
     );
 
     if (empty($flags)) {
-        echo html_writer::div('No users flagged yet.', 'alert alert-info');
+        echo html_writer::div(get_string('report:noflags', 'local_agentdetect'), 'alert alert-info');
     } else {
         $flagtable = new html_table();
         $flagtable->head = ['User', 'Flag Type', 'Max Score', 'Detection Count', 'Last Updated', 'Actions'];
@@ -426,7 +436,7 @@ if (!$userid) {
 
             $actions = html_writer::link(
                 new moodle_url('/local/agentdetect/report.php', ['userid' => $flag->userid]),
-                'View Signals',
+                get_string('report:viewsignals', 'local_agentdetect'),
                 ['class' => 'btn btn-sm btn-outline-primary']
             );
 

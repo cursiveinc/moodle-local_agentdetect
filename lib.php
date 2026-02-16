@@ -18,7 +18,7 @@
  * Library functions for local_agentdetect.
  *
  * @package    local_agentdetect
- * @copyright  2024 Your Institution
+ * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -26,21 +26,37 @@
  * Inject agent detection JavaScript into pages.
  *
  * This function is called via the before_footer callback.
+ * It handles two concerns:
+ * 1. Loading the detection engine on monitored page types.
+ * 2. Loading quiz badge icons for teachers on quiz report/review pages.
  *
  * @return string Empty string (JS is loaded via page requirements).
  */
 function local_agentdetect_before_footer(): string {
     global $PAGE, $USER;
 
-    // Check if detection is enabled.
-    if (!get_config('local_agentdetect', 'enabled')) {
-        return '';
-    }
-
     // Don't run for guests or not-logged-in users.
     if (!isloggedin() || isguestuser()) {
         return '';
     }
+
+    // --- Section 1: Detection engine ---
+    $detectionenabled = get_config('local_agentdetect', 'enabled');
+    if ($detectionenabled) {
+        local_agentdetect_load_detector();
+    }
+
+    // --- Section 2: Quiz badge injection for teachers ---
+    local_agentdetect_load_quiz_badges();
+
+    return '';
+}
+
+/**
+ * Load the detection engine on monitored page types.
+ */
+function local_agentdetect_load_detector(): void {
+    global $PAGE;
 
     // Check if we should run on this page type.
     $enabledpagetypes = get_config('local_agentdetect', 'pagetypes');
@@ -61,7 +77,7 @@ function local_agentdetect_before_footer(): string {
             }
         }
         if (!$matches) {
-            return '';
+            return;
         }
     }
 
@@ -84,8 +100,84 @@ function local_agentdetect_before_footer(): string {
         'init',
         [$config]
     );
+}
 
-    return '';
+/**
+ * Load quiz badge icons on quiz report/review pages for teachers.
+ *
+ * This runs independently of whether detection is enabled — teachers
+ * can see badges even when detection is turned off.
+ */
+function local_agentdetect_load_quiz_badges(): void {
+    global $PAGE;
+
+    $pagetype = $PAGE->pagetype;
+
+    // Only load on quiz report overview or single attempt review.
+    if ($pagetype === 'mod-quiz-report' || $pagetype === 'mod-quiz-report-overview') {
+        $mode = 'overview';
+    } else if ($pagetype === 'mod-quiz-review') {
+        $mode = 'review';
+    } else {
+        return;
+    }
+
+    // Walk up to course context.
+    $context = $PAGE->context;
+    $coursecontext = $context->get_course_context(false);
+    if (!$coursecontext) {
+        return;
+    }
+
+    // Check capability.
+    if (!has_capability('local/agentdetect:viewreports', $coursecontext)) {
+        return;
+    }
+
+    $courseid = $coursecontext->instanceid;
+    $reporturl = new moodle_url('/local/agentdetect/coursereport.php', ['courseid' => $courseid]);
+
+    $config = [
+        'mode' => $mode,
+        'courseid' => $courseid,
+        'contextid' => $coursecontext->id,
+        'reportUrl' => $reporturl->out(false),
+    ];
+
+    $PAGE->requires->js_call_amd(
+        'local_agentdetect/quiz_badge',
+        'init',
+        [$config]
+    );
+}
+
+/**
+ * Extend course navigation with agent detection report link.
+ *
+ * Adds "Agent Detection Report" to the course Reports section.
+ *
+ * @param navigation_node $navigation The navigation node.
+ * @param stdClass $course The course object.
+ * @param context $context The course context.
+ */
+function local_agentdetect_extend_navigation_course(
+    navigation_node $navigation,
+    stdClass $course,
+    context $context
+): void {
+    if (!has_capability('local/agentdetect:viewreports', $context)) {
+        return;
+    }
+
+    $url = new moodle_url('/local/agentdetect/coursereport.php', ['courseid' => $course->id]);
+    $navigation->add(
+        get_string('coursereport', 'local_agentdetect'),
+        $url,
+        navigation_node::TYPE_SETTING,
+        null,
+        'agentdetect_coursereport',
+        new pix_icon('i/report', '')
+    );
 }
 
 /**
@@ -100,6 +192,10 @@ function local_agentdetect_extend_navigation(navigation_node $nav): void {
 /**
  * Extend settings navigation for the plugin.
  *
+ * Intentionally left empty — the course report link is added via
+ * local_agentdetect_extend_navigation_course() instead to avoid
+ * duplicate navigation entries.
+ *
  * @param settings_navigation $settingsnav The settings navigation object.
  * @param context $context The context.
  */
@@ -107,28 +203,5 @@ function local_agentdetect_extend_settings_navigation(
     settings_navigation $settingsnav,
     context $context
 ): void {
-    global $PAGE;
-
-    // Only add for course and module contexts where user can view reports.
-    if (!has_capability('local/agentdetect:viewreports', $context)) {
-        return;
-    }
-
-    // Find the course/activity settings node.
-    $settingsnode = $settingsnav->find('courseadmin', navigation_node::TYPE_COURSE);
-    if (!$settingsnode) {
-        $settingsnode = $settingsnav->find('modulesettings', navigation_node::TYPE_SETTING);
-    }
-
-    if ($settingsnode) {
-        $url = new moodle_url('/local/agentdetect/report.php', ['contextid' => $context->id]);
-        $settingsnode->add(
-            get_string('pluginname', 'local_agentdetect'),
-            $url,
-            navigation_node::TYPE_SETTING,
-            null,
-            'agentdetect',
-            new pix_icon('i/report', '')
-        );
-    }
+    // Course report link handled by extend_navigation_course().
 }

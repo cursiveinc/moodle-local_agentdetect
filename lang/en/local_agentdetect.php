@@ -18,18 +18,40 @@
  * Language strings for local_agentdetect.
  *
  * @package    local_agentdetect
- * @copyright  2024 Your Institution
+ * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
+// General.
 $string['pluginname'] = 'Agent Detection';
+
+// Privacy metadata — signals table.
 $string['privacy:metadata:local_agentdetect_signals'] = 'Stores browser fingerprint and interaction signals for agent detection.';
 $string['privacy:metadata:local_agentdetect_signals:userid'] = 'The ID of the user whose session is being analyzed.';
-$string['privacy:metadata:local_agentdetect_signals:signals'] = 'JSON-encoded detection signals collected from the browser.';
-$string['privacy:metadata:local_agentdetect_signals:agentscore'] = 'Calculated probability score indicating automated browser usage.';
+$string['privacy:metadata:local_agentdetect_signals:contextid'] = 'The Moodle context where the detection occurred.';
+$string['privacy:metadata:local_agentdetect_signals:sessionid'] = 'A unique identifier for the detection session.';
+$string['privacy:metadata:local_agentdetect_signals:signaltype'] = 'The type of detection signal recorded.';
+$string['privacy:metadata:local_agentdetect_signals:fingerprintscore'] = 'Browser fingerprint detection score (0-100).';
+$string['privacy:metadata:local_agentdetect_signals:interactionscore'] = 'Interaction anomaly detection score (0-100).';
+$string['privacy:metadata:local_agentdetect_signals:combinedscore'] = 'Combined detection score (0-100).';
+$string['privacy:metadata:local_agentdetect_signals:verdict'] = 'The detection verdict string.';
+$string['privacy:metadata:local_agentdetect_signals:signaldata'] = 'JSON-encoded detailed signal data collected from the browser.';
+$string['privacy:metadata:local_agentdetect_signals:useragent'] = 'The browser user agent string.';
+$string['privacy:metadata:local_agentdetect_signals:ipaddress'] = 'The client IP address at the time of detection.';
 $string['privacy:metadata:local_agentdetect_signals:timecreated'] = 'Timestamp when the signals were collected.';
+
+// Privacy metadata — flags table.
+$string['privacy:metadata:local_agentdetect_flags'] = 'Stores aggregated agent detection flags per user.';
+$string['privacy:metadata:local_agentdetect_flags:userid'] = 'The ID of the flagged user.';
+$string['privacy:metadata:local_agentdetect_flags:contextid'] = 'The Moodle context for this flag.';
+$string['privacy:metadata:local_agentdetect_flags:flagtype'] = 'The type of flag assigned to the user.';
+$string['privacy:metadata:local_agentdetect_flags:maxscore'] = 'The maximum detection score observed for this user.';
+$string['privacy:metadata:local_agentdetect_flags:detectioncount'] = 'The number of suspicious detections recorded.';
+$string['privacy:metadata:local_agentdetect_flags:notes'] = 'Admin notes about this flag.';
+$string['privacy:metadata:local_agentdetect_flags:timecreated'] = 'Timestamp when the flag was first created.';
+$string['privacy:metadata:local_agentdetect_flags:timemodified'] = 'Timestamp when the flag was last updated.';
 
 // Detection signal descriptions.
 $string['signal:webdriver'] = 'WebDriver flag detected';
@@ -43,5 +65,82 @@ $string['settings:enabled'] = 'Enable agent detection';
 $string['settings:enabled_desc'] = 'When enabled, the plugin will collect browser signals and flag potential automated sessions.';
 $string['settings:threshold'] = 'Detection threshold';
 $string['settings:threshold_desc'] = 'Agent probability score (0-100) above which a session is flagged. Lower values are more sensitive.';
+$string['settings:minreportscore'] = 'Minimum report score';
+$string['settings:minreportscore_desc'] = 'Only report signals with combined score at or above this value (0-100).';
+$string['settings:reportinterval'] = 'Report interval (ms)';
+$string['settings:reportinterval_desc'] = 'How often to send detection reports to the server (in milliseconds).';
+$string['settings:pagetypes'] = 'Page types to monitor';
+$string['settings:pagetypes_desc'] = 'Comma-separated list of page types to enable detection on. Use * for wildcard. Leave empty to monitor all pages. Examples: mod-assign-*, mod-quiz-*, mod-forum-*';
 $string['settings:collectinteraction'] = 'Collect interaction data';
 $string['settings:collectinteraction_desc'] = 'Track mouse movements, click patterns, and keystroke timing for behavioral analysis.';
+$string['settings:debug'] = 'Debug mode';
+$string['settings:debug_desc'] = 'Enable debug logging in browser console.';
+
+// Admin report page.
+$string['report:title'] = 'Agent Detection Report';
+$string['report:filtersignals'] = 'Filter signals';
+$string['report:allusers'] = 'All users';
+$string['report:allsessions'] = 'All sessions';
+$string['report:filter'] = 'Filter';
+$string['report:clearfilters'] = 'Clear filters';
+$string['report:downloadjson'] = 'Download JSON';
+$string['report:signalsfor'] = 'Signals for {$a}';
+$string['report:storedsignals'] = 'Stored detection signals';
+$string['report:nosignals'] = 'No signals recorded yet.';
+$string['report:usersummary'] = 'User summary: ';
+$string['report:maxscore'] = 'Max score';
+$string['report:avgscore'] = 'Avg score';
+$string['report:userflags'] = 'User flags';
+$string['report:noflags'] = 'No users flagged yet.';
+$string['report:viewsignals'] = 'View signals';
+
+// Test page.
+$string['testpage'] = 'Agent Detection Test';
+
+// Error messages.
+$string['error:debugonly'] = 'This page is only accessible when debug mode is enabled.';
+
+// Course report page.
+$string['coursereport'] = 'Agent Detection Report';
+$string['coursereport:title'] = 'Agent Detection Report';
+$string['coursereport:flaggedstudents'] = 'Flagged students';
+$string['coursereport:studentsignals'] = 'Detection signals for {$a}';
+$string['coursereport:noflags'] = 'No students flagged in this course.';
+$string['coursereport:nosignals'] = 'No detection signals found for this student.';
+$string['coursereport:maxscore'] = 'Max score';
+$string['coursereport:detectioncount'] = 'Detection count';
+$string['coursereport:flagtype'] = 'Flag type';
+$string['coursereport:lastdetected'] = 'Last detected';
+$string['coursereport:viewdetails'] = 'View details';
+$string['coursereport:viewadminreport'] = 'View admin report';
+$string['coursereport:sessionid'] = 'Session';
+$string['coursereport:date'] = 'Date';
+$string['coursereport:verdict'] = 'Verdict';
+$string['coursereport:score'] = 'Score';
+$string['coursereport:signalcount'] = 'Signals';
+$string['coursereport:whyflagged'] = 'Why was this session flagged?';
+$string['coursereport:noexplanation'] = 'No detailed signal data available for this session.';
+$string['coursereport:summary'] = 'Detection Summary';
+$string['coursereport:highestscore'] = 'Highest Score';
+$string['coursereport:highestverdict'] = 'Highest Verdict';
+$string['coursereport:sessioncount'] = 'Sessions with Signals';
+$string['coursereport:caveat'] = 'Important: These results are not definitive proof of academic dishonesty. This report is based on automated behavioural analysis of the student\'s browser session, including mouse movement patterns, click behaviour, and keyboard activity. Unusual patterns may have legitimate explanations. Please use this information as one factor among many when making academic integrity decisions.';
+
+// Verdict labels.
+$string['verdict:highconfidenceagent'] = 'High confidence agent';
+$string['verdict:probableagent'] = 'Probable agent';
+$string['verdict:suspicious'] = 'Suspicious';
+$string['verdict:lowsuspicion'] = 'Low suspicion';
+$string['verdict:likelyhuman'] = 'Likely human';
+
+// Badge tooltips.
+$string['badge:agentsuspected'] = 'Agent suspected - detection score {$a}';
+$string['badge:agentconfirmed'] = 'Agent confirmed - detection score {$a}';
+$string['badge:lowsuspicion'] = 'Low suspicion - detection score {$a}';
+$string['badge:likelyhuman'] = 'Likely human - detection score {$a}';
+
+// Capabilities.
+$string['agentdetect:viewreports'] = 'View agent detection reports';
+$string['agentdetect:manageflags'] = 'Manage agent detection flags';
+$string['agentdetect:viewsignals'] = 'View detailed detection signal data';
+$string['agentdetect:configure'] = 'Configure agent detection settings';

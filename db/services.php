@@ -18,7 +18,7 @@
  * External services definition for local_agentdetect.
  *
  * @package    local_agentdetect
- * @copyright  2024 Your Institution
+ * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -30,6 +30,14 @@ $functions = [
         'methodname' => 'execute',
         'description' => 'Report agent detection signals from the browser',
         'type' => 'write',
+        'ajax' => true,
+        'loginrequired' => true,
+    ],
+    'local_agentdetect_get_user_flags' => [
+        'classname' => 'local_agentdetect\external\get_user_flags',
+        'methodname' => 'execute',
+        'description' => 'Get detection flags for specified users in a context',
+        'type' => 'read',
         'ajax' => true,
         'loginrequired' => true,
     ],

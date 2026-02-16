@@ -27,6 +27,7 @@
       <INDEXES>
         <INDEX NAME="sessionid" UNIQUE="false" FIELDS="sessionid"/>
         <INDEX NAME="userid_timecreated" UNIQUE="false" FIELDS="userid, timecreated"/>
+        <INDEX NAME="userid_sessionid" UNIQUE="false" FIELDS="userid, sessionid"/>
         <INDEX NAME="combinedscore" UNIQUE="false" FIELDS="combinedscore"/>
         <INDEX NAME="verdict" UNIQUE="false" FIELDS="verdict"/>
         <INDEX NAME="contextid" UNIQUE="false" FIELDS="contextid"/>
@@ -54,6 +55,8 @@
         <INDEX NAME="userid_contextid" UNIQUE="true" FIELDS="userid, contextid"/>
         <INDEX NAME="flagtype" UNIQUE="false" FIELDS="flagtype"/>
         <INDEX NAME="maxscore" UNIQUE="false" FIELDS="maxscore"/>
+        <INDEX NAME="timemodified" UNIQUE="false" FIELDS="timemodified"/>
+        <INDEX NAME="contextid" UNIQUE="false" FIELDS="contextid"/>
       </INDEXES>
     </TABLE>
   </TABLES>

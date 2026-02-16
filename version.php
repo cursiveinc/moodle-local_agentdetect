@@ -18,14 +18,14 @@
  * Version information for local_agentdetect.
  *
  * @package    local_agentdetect
- * @copyright  2024 Your Institution
+ * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_agentdetect';
-$plugin->version = 2024012700;
+$plugin->version = 2026021600;
 $plugin->requires = 2023100900; // Moodle 4.3+.
-$plugin->maturity = MATURITY_ALPHA;
-$plugin->release = '0.1.0';
+$plugin->maturity = MATURITY_BETA;
+$plugin->release = '0.2.0';

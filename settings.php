@@ -18,7 +18,7 @@
  * Admin settings for local_agentdetect.
  *
  * @package    local_agentdetect
- * @copyright  2024 Your Institution
+ * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
@@ -47,8 +47,8 @@ if ($hassiteconfig) {
     // Minimum score to report.
     $settings->add(new admin_setting_configtext(
         'local_agentdetect/minreportscore',
-        'Minimum report score',
-        'Only report signals with combined score at or above this value (0-100)',
+        get_string('settings:minreportscore', 'local_agentdetect'),
+        get_string('settings:minreportscore_desc', 'local_agentdetect'),
         10,
         PARAM_INT
     ));
@@ -56,8 +56,8 @@ if ($hassiteconfig) {
     // Report interval.
     $settings->add(new admin_setting_configtext(
         'local_agentdetect/reportinterval',
-        'Report interval (ms)',
-        'How often to send detection reports to the server (in milliseconds)',
+        get_string('settings:reportinterval', 'local_agentdetect'),
+        get_string('settings:reportinterval_desc', 'local_agentdetect'),
         30000,
         PARAM_INT
     ));
@@ -65,9 +65,8 @@ if ($hassiteconfig) {
     // Page types to monitor.
     $settings->add(new admin_setting_configtextarea(
         'local_agentdetect/pagetypes',
-        'Page types to monitor',
-        'Comma-separated list of page types to enable detection on. Use * for wildcard. ' .
-        'Leave empty to monitor all pages. Examples: mod-assign-*, mod-quiz-*, mod-forum-*',
+        get_string('settings:pagetypes', 'local_agentdetect'),
+        get_string('settings:pagetypes_desc', 'local_agentdetect'),
         'mod-assign-*,mod-quiz-*'
     ));
 
@@ -82,10 +81,18 @@ if ($hassiteconfig) {
     // Debug mode.
     $settings->add(new admin_setting_configcheckbox(
         'local_agentdetect/debug',
-        'Debug mode',
-        'Enable debug logging in browser console',
+        get_string('settings:debug', 'local_agentdetect'),
+        get_string('settings:debug_desc', 'local_agentdetect'),
         0
     ));
 
     $ADMIN->add('localplugins', $settings);
+
+    // Register the admin report under Site Administration > Reports.
+    $ADMIN->add('reports', new admin_externalpage(
+        'local_agentdetect_report',
+        get_string('pluginname', 'local_agentdetect'),
+        new moodle_url('/local/agentdetect/report.php'),
+        'local/agentdetect:viewsignals'
+    ));
 }

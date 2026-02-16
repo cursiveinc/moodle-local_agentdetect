@@ -18,19 +18,24 @@
  * Test page for agent detection - shows real-time detection results.
  *
  * @package    local_agentdetect
- * @copyright  2024 Your Institution
+ * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
 require_once(__DIR__ . '/../../config.php');
 
 require_login();
-require_capability('moodle/site:config', context_system::instance());
+require_capability('local/agentdetect:configure', context_system::instance());
+
+// Only accessible in debug mode.
+if (!debugging('', DEBUG_DEVELOPER)) {
+    throw new moodle_exception('error:debugonly', 'local_agentdetect');
+}
 
 $PAGE->set_url(new moodle_url('/local/agentdetect/test.php'));
 $PAGE->set_context(context_system::instance());
-$PAGE->set_title('Agent Detection Test');
-$PAGE->set_heading('Agent Detection Test');
+$PAGE->set_title(get_string('testpage', 'local_agentdetect'));
+$PAGE->set_heading(get_string('testpage', 'local_agentdetect'));
 
 echo $OUTPUT->header();
 
