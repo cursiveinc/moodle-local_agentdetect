@@ -721,15 +721,16 @@ const collectWebGLInfo = () => {
 
                 // Check for headless indicators.
                 const headlessRenderers = ['SwiftShader', 'llvmpipe', 'Mesa', 'Software'];
-                for (const hr of headlessRenderers) {
-                    if (results.renderer && results.renderer.includes(hr)) {
-                        results.anomalies.push({
-                            name: `webgl.renderer.${hr.toLowerCase()}`,
-                            value: results.renderer,
-                            weight: 8,
-                        });
-                    }
-                }
+                const matchedRenderers = headlessRenderers.filter(
+                    (hr) => results.renderer && results.renderer.includes(hr)
+                );
+                matchedRenderers.forEach((hr) => {
+                    results.anomalies.push({
+                        name: `webgl.renderer.${hr.toLowerCase()}`,
+                        value: results.renderer,
+                        weight: 8,
+                    });
+                });
             }
         } else {
             results.anomalies.push({name: 'webgl.unavailable', weight: 5});
