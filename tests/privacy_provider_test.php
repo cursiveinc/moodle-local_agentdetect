@@ -81,12 +81,12 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         );
 
         $contextlist = provider::get_contexts_for_userid($user->id);
-        $contextids = $contextlist->get_contextids();
+        // Cast all IDs to int for reliable strict comparison.
+        $contextids = array_map('intval', $contextlist->get_contextids());
 
         // Should include the course context and system context.
-        // Context IDs from the contextlist are strings, so cast for comparison.
-        $this->assertContains((string) $coursecontext->id, $contextids);
-        $this->assertContains((string) \context_system::instance()->id, $contextids);
+        $this->assertContains((int) $coursecontext->id, $contextids);
+        $this->assertContains((int) \context_system::instance()->id, $contextids);
     }
 
     /**
@@ -119,8 +119,8 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $userlist = new userlist($coursecontext, 'local_agentdetect');
         provider::get_users_in_context($userlist);
 
-        $userids = $userlist->get_userids();
-        // User IDs from the userlist are integers, so cast for comparison.
+        // Cast all IDs to int for reliable strict comparison.
+        $userids = array_map('intval', $userlist->get_userids());
         $this->assertContains((int) $user1->id, $userids);
         $this->assertContains((int) $user2->id, $userids);
     }
