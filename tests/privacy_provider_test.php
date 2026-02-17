@@ -84,8 +84,9 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         $contextids = $contextlist->get_contextids();
 
         // Should include the course context and system context.
-        $this->assertContains($coursecontext->id, $contextids);
-        $this->assertContains(\context_system::instance()->id, $contextids);
+        // Context IDs from the contextlist are strings, so cast for comparison.
+        $this->assertContains((string) $coursecontext->id, $contextids);
+        $this->assertContains((string) \context_system::instance()->id, $contextids);
     }
 
     /**
@@ -119,8 +120,9 @@ final class privacy_provider_test extends \core_privacy\tests\provider_testcase 
         provider::get_users_in_context($userlist);
 
         $userids = $userlist->get_userids();
-        $this->assertContains($user1->id, $userids);
-        $this->assertContains($user2->id, $userids);
+        // User IDs from the userlist are integers, so cast for comparison.
+        $this->assertContains((int) $user1->id, $userids);
+        $this->assertContains((int) $user2->id, $userids);
     }
 
     /**
