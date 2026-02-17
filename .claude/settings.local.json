@@ -11,7 +11,9 @@
       "Bash(gh run list:*)",
       "Bash(for f in test.php settings.php lang/en/local_agentdetect.php db/access.php db/services.php classes/signal_manager.php classes/external/report_signals.php amd/src/detector.js amd/src/fingerprint.js amd/src/interaction.js amd/src/injection.js)",
       "Bash(do sed -i 's/2024 Your Institution/2026 Cursive Technology <joe@cursivetechnology.com>/g' \"$f\")",
-      "Bash(done)"
+      "Bash(done)",
+      "Bash(node --version:*)",
+      "Bash(npm --version:*)"
     ]
   }
 }
