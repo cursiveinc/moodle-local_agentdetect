@@ -131,9 +131,13 @@ jobs:
         run: |
           # Rebuild AMD build files with CI's toolchain so the staleness check
           # compares against the same Babel/caniuse-lite versions CI uses.
-          # Plugin repos cannot vendor Moodle core's node_modules, so the
-          # committed build files may legitimately differ from CI's output.
-          cd moodle && npx grunt amd --root=local/agentdetect && cd ..
+          # Each Moodle branch may use a different Babel/caniuse-lite version,
+          # so committed build files can legitimately differ from CI output.
+          cd moodle
+          npx grunt amd --root=local/agentdetect
+          git add -A local/agentdetect/amd/build
+          git commit --allow-empty -m "Align build artefacts with CI toolchain" --no-verify
+          cd ..
           moodle-plugin-ci grunt --max-lint-warnings 0
 
       - name: PHPUnit tests
