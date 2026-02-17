@@ -13,7 +13,9 @@
       "Bash(do sed -i 's/2024 Your Institution/2026 Cursive Technology <joe@cursivetechnology.com>/g' \"$f\")",
       "Bash(done)",
       "Bash(node --version:*)",
-      "Bash(npm --version:*)"
+      "Bash(npm --version:*)",
+      "Bash(npm ls:*)",
+      "Bash(npm outdated:*)"
     ]
   }
 }
