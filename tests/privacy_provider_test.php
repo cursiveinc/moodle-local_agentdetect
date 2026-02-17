@@ -38,10 +38,12 @@ use local_agentdetect\privacy\provider;
  * @package    local_agentdetect
  * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers     \local_agentdetect\privacy\provider
  */
-class privacy_provider_test extends \core_privacy\tests\provider_testcase {
+final class privacy_provider_test extends \core_privacy\tests\provider_testcase {
     /**
      * Test that metadata is described correctly.
+     * @covers \local_agentdetect\privacy\provider::get_metadata
      */
     public function test_get_metadata(): void {
         $collection = new collection('local_agentdetect');
@@ -61,6 +63,7 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
 
     /**
      * Test that contexts are correctly identified for a user.
+     * @covers \local_agentdetect\privacy\provider::get_contexts_for_userid
      */
     public function test_get_contexts_for_userid(): void {
         $this->resetAfterTest();
@@ -69,8 +72,13 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
         $coursecontext = \context_course::instance($course->id);
 
         $manager = new signal_manager();
-        $manager->store_signal($user->id, $coursecontext->id, 'privacy-test', 'combined',
-            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']);
+        $manager->store_signal(
+            $user->id,
+            $coursecontext->id,
+            'privacy-test',
+            'combined',
+            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']
+        );
 
         $contextlist = provider::get_contexts_for_userid($user->id);
         $contextids = $contextlist->get_contextids();
@@ -82,6 +90,7 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
 
     /**
      * Test that users in a context are correctly identified.
+     * @covers \local_agentdetect\privacy\provider::get_users_in_context
      */
     public function test_get_users_in_context(): void {
         $this->resetAfterTest();
@@ -91,10 +100,20 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
         $coursecontext = \context_course::instance($course->id);
 
         $manager = new signal_manager();
-        $manager->store_signal($user1->id, $coursecontext->id, 'privacy-u1', 'combined',
-            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']);
-        $manager->store_signal($user2->id, $coursecontext->id, 'privacy-u2', 'combined',
-            ['combinedscore' => 60, 'verdict' => 'SUSPICIOUS']);
+        $manager->store_signal(
+            $user1->id,
+            $coursecontext->id,
+            'privacy-u1',
+            'combined',
+            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']
+        );
+        $manager->store_signal(
+            $user2->id,
+            $coursecontext->id,
+            'privacy-u2',
+            'combined',
+            ['combinedscore' => 60, 'verdict' => 'SUSPICIOUS']
+        );
 
         $userlist = new userlist($coursecontext, 'local_agentdetect');
         provider::get_users_in_context($userlist);
@@ -106,6 +125,7 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
 
     /**
      * Test data export for a user.
+     * @covers \local_agentdetect\privacy\provider::export_user_data
      */
     public function test_export_user_data(): void {
         $this->resetAfterTest();
@@ -114,11 +134,20 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
         $coursecontext = \context_course::instance($course->id);
 
         $manager = new signal_manager();
-        $manager->store_signal($user->id, $coursecontext->id, 'export-test', 'combined',
-            ['combinedscore' => 75, 'verdict' => 'HIGH_CONFIDENCE_AGENT']);
+        $manager->store_signal(
+            $user->id,
+            $coursecontext->id,
+            'export-test',
+            'combined',
+            ['combinedscore' => 75, 'verdict' => 'HIGH_CONFIDENCE_AGENT']
+        );
 
         $contextlist = provider::get_contexts_for_userid($user->id);
-        $approvedcontextlist = new approved_contextlist($user, 'local_agentdetect', $contextlist->get_contextids());
+        $approvedcontextlist = new approved_contextlist(
+            $user,
+            'local_agentdetect',
+            $contextlist->get_contextids()
+        );
 
         provider::export_user_data($approvedcontextlist);
 
@@ -130,6 +159,7 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
 
     /**
      * Test deleting data for a specific user.
+     * @covers \local_agentdetect\privacy\provider::delete_data_for_user
      */
     public function test_delete_data_for_user(): void {
         global $DB;
@@ -141,14 +171,28 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
         $coursecontext = \context_course::instance($course->id);
 
         $manager = new signal_manager();
-        $manager->store_signal($user1->id, $coursecontext->id, 'del-u1', 'combined',
-            ['combinedscore' => 80, 'verdict' => 'HIGH_CONFIDENCE_AGENT']);
-        $manager->store_signal($user2->id, $coursecontext->id, 'del-u2', 'combined',
-            ['combinedscore' => 70, 'verdict' => 'PROBABLE_AGENT']);
+        $manager->store_signal(
+            $user1->id,
+            $coursecontext->id,
+            'del-u1',
+            'combined',
+            ['combinedscore' => 80, 'verdict' => 'HIGH_CONFIDENCE_AGENT']
+        );
+        $manager->store_signal(
+            $user2->id,
+            $coursecontext->id,
+            'del-u2',
+            'combined',
+            ['combinedscore' => 70, 'verdict' => 'PROBABLE_AGENT']
+        );
 
         // Delete user1's data.
         $contextlist = provider::get_contexts_for_userid($user1->id);
-        $approvedcontextlist = new approved_contextlist($user1, 'local_agentdetect', $contextlist->get_contextids());
+        $approvedcontextlist = new approved_contextlist(
+            $user1,
+            'local_agentdetect',
+            $contextlist->get_contextids()
+        );
         provider::delete_data_for_user($approvedcontextlist);
 
         // User1's data should be gone.
@@ -161,6 +205,7 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
 
     /**
      * Test deleting all data in a context.
+     * @covers \local_agentdetect\privacy\provider::delete_data_for_all_users_in_context
      */
     public function test_delete_data_for_all_users_in_context(): void {
         global $DB;
@@ -171,8 +216,13 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
         $coursecontext = \context_course::instance($course->id);
 
         $manager = new signal_manager();
-        $manager->store_signal($user->id, $coursecontext->id, 'delall', 'combined',
-            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']);
+        $manager->store_signal(
+            $user->id,
+            $coursecontext->id,
+            'delall',
+            'combined',
+            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']
+        );
 
         provider::delete_data_for_all_users_in_context($coursecontext);
 
@@ -182,6 +232,7 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
 
     /**
      * Test deleting data for multiple users.
+     * @covers \local_agentdetect\privacy\provider::delete_data_for_users
      */
     public function test_delete_data_for_users(): void {
         global $DB;
@@ -193,22 +244,38 @@ class privacy_provider_test extends \core_privacy\tests\provider_testcase {
         $coursecontext = \context_course::instance($course->id);
 
         $manager = new signal_manager();
-        $manager->store_signal($user1->id, $coursecontext->id, 'delmulti-1', 'combined',
-            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']);
-        $manager->store_signal($user2->id, $coursecontext->id, 'delmulti-2', 'combined',
-            ['combinedscore' => 60, 'verdict' => 'SUSPICIOUS']);
+        $manager->store_signal(
+            $user1->id,
+            $coursecontext->id,
+            'delmulti-1',
+            'combined',
+            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']
+        );
+        $manager->store_signal(
+            $user2->id,
+            $coursecontext->id,
+            'delmulti-2',
+            'combined',
+            ['combinedscore' => 60, 'verdict' => 'SUSPICIOUS']
+        );
 
         // Delete only user1.
         $userlist = new userlist($coursecontext, 'local_agentdetect');
         provider::get_users_in_context($userlist);
-        $approveduserlist = new approved_userlist($coursecontext, 'local_agentdetect', [$user1->id]);
+        $approveduserlist = new approved_userlist(
+            $coursecontext,
+            'local_agentdetect',
+            [$user1->id]
+        );
         provider::delete_data_for_users($approveduserlist);
 
         $this->assertEquals(0, $DB->count_records('local_agentdetect_signals', [
-            'userid' => $user1->id, 'contextid' => $coursecontext->id,
+            'userid' => $user1->id,
+            'contextid' => $coursecontext->id,
         ]));
         $this->assertGreaterThan(0, $DB->count_records('local_agentdetect_signals', [
-            'userid' => $user2->id, 'contextid' => $coursecontext->id,
+            'userid' => $user2->id,
+            'contextid' => $coursecontext->id,
         ]));
     }
 }

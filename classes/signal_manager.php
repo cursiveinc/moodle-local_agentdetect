@@ -175,8 +175,13 @@ class signal_manager {
 
             // Fire event if flag type was escalated.
             if ($existingflag->flagtype !== $oldflagtype) {
-                $this->trigger_user_flagged_event($userid, $contextid, $existingflag->id,
-                    $existingflag->flagtype, $existingflag->maxscore);
+                $this->trigger_user_flagged_event(
+                    $userid,
+                    $contextid,
+                    $existingflag->id,
+                    $existingflag->flagtype,
+                    $existingflag->maxscore
+                );
             }
 
             return $existingflag->flagtype;
@@ -195,7 +200,13 @@ class signal_manager {
             $flagid = $DB->insert_record('local_agentdetect_flags', $flag);
 
             // Fire user_flagged event.
-            $this->trigger_user_flagged_event($userid, $contextid, $flagid, $flag->flagtype, $flag->maxscore);
+            $this->trigger_user_flagged_event(
+                $userid,
+                $contextid,
+                $flagid,
+                $flag->flagtype,
+                $flag->maxscore
+            );
 
             return $flag->flagtype;
         }
@@ -362,8 +373,13 @@ class signal_manager {
      * @return bool Success.
      */
     public function clear_flag(int $userid, ?int $contextid = null, int $clearedby = 0): bool {
-        return $this->set_flag($userid, self::FLAG_CLEARED, $contextid,
-            get_string('flag:clearedbyadmin', 'local_agentdetect'), $clearedby) > 0;
+        return $this->set_flag(
+            $userid,
+            self::FLAG_CLEARED,
+            $contextid,
+            get_string('flag:clearedbyadmin', 'local_agentdetect'),
+            $clearedby
+        ) > 0;
     }
 
     /**

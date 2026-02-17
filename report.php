@@ -146,7 +146,8 @@ if ($userid) {
     );
 
     echo html_writer::start_div('form-group mr-3 mb-2');
-    echo html_writer::label(get_string('coursereport:sessionid', 'local_agentdetect') . ': ', 'sessionid', true, ['class' => 'mr-2']);
+    $sessionlabel = get_string('coursereport:sessionid', 'local_agentdetect') . ': ';
+    echo html_writer::label($sessionlabel, 'sessionid', true, ['class' => 'mr-2']);
     $sessionoptions = ['' => get_string('report:allsessions', 'local_agentdetect')];
     foreach ($sessions as $s) {
         $sessionoptions[$s->sessionid] = $s->sessionid . ' (max: ' . ($s->maxscore ?? '?') . ')';
@@ -231,7 +232,8 @@ if (empty($signals)) {
         "SELECT COUNT(*) FROM {local_agentdetect_signals} s {$countwhere}",
         $countparams
     );
-    echo html_writer::tag('p', get_string('report:showing', 'local_agentdetect', (object) ['limit' => $limit, 'total' => $totalcount]));
+    $showingparams = (object) ['limit' => $limit, 'total' => $totalcount];
+    echo html_writer::tag('p', get_string('report:showing', 'local_agentdetect', $showingparams));
 
     // If viewing a user, show summary stats.
     if ($userid) {

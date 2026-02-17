@@ -31,10 +31,12 @@ namespace local_agentdetect;
  * @package    local_agentdetect
  * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
+ * @covers     \local_agentdetect\signal_manager
  */
-class signal_manager_test extends \advanced_testcase {
+final class signal_manager_test extends \advanced_testcase {
     /**
      * Test storing a signal below the suspicious threshold creates no flag.
+     * @covers \local_agentdetect\signal_manager::store_signal
      */
     public function test_store_signal_below_threshold(): void {
         $this->resetAfterTest();
@@ -59,6 +61,7 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test storing a signal above the suspicious threshold creates a low_suspicion flag.
+     * @covers \local_agentdetect\signal_manager::store_signal
      */
     public function test_store_signal_suspicious_threshold(): void {
         $this->resetAfterTest();
@@ -84,6 +87,7 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test storing a signal above the high threshold creates an agent_suspected flag.
+     * @covers \local_agentdetect\signal_manager::store_signal
      */
     public function test_store_signal_high_threshold(): void {
         $this->resetAfterTest();
@@ -110,6 +114,7 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test that repeated signals increment the detection count and update max score.
+     * @covers \local_agentdetect\signal_manager::store_signal
      */
     public function test_store_signal_increments_detection_count(): void {
         $this->resetAfterTest();
@@ -118,12 +123,22 @@ class signal_manager_test extends \advanced_testcase {
         $manager = new signal_manager();
 
         // First signal — suspicious.
-        $manager->store_signal($user->id, 0, 'session-a', 'combined',
-            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']);
+        $manager->store_signal(
+            $user->id,
+            0,
+            'session-a',
+            'combined',
+            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']
+        );
 
         // Second signal — higher score.
-        $manager->store_signal($user->id, 0, 'session-b', 'combined',
-            ['combinedscore' => 60, 'verdict' => 'SUSPICIOUS']);
+        $manager->store_signal(
+            $user->id,
+            0,
+            'session-b',
+            'combined',
+            ['combinedscore' => 60, 'verdict' => 'SUSPICIOUS']
+        );
 
         $flags = $manager->get_user_flags($user->id);
         $this->assertCount(1, $flags);
@@ -134,6 +149,7 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test flag escalation from low_suspicion to agent_suspected.
+     * @covers \local_agentdetect\signal_manager::store_signal
      */
     public function test_flag_escalation(): void {
         $this->resetAfterTest();
@@ -142,13 +158,23 @@ class signal_manager_test extends \advanced_testcase {
         $manager = new signal_manager();
 
         // Start with low suspicion.
-        $result1 = $manager->store_signal($user->id, 0, 'session-c', 'combined',
-            ['combinedscore' => 45, 'verdict' => 'SUSPICIOUS']);
+        $result1 = $manager->store_signal(
+            $user->id,
+            0,
+            'session-c',
+            'combined',
+            ['combinedscore' => 45, 'verdict' => 'SUSPICIOUS']
+        );
         $this->assertEquals('low_suspicion', $result1['flag_status']);
 
         // Escalate to agent_suspected with high score.
-        $result2 = $manager->store_signal($user->id, 0, 'session-d', 'combined',
-            ['combinedscore' => 80, 'verdict' => 'HIGH_CONFIDENCE_AGENT']);
+        $result2 = $manager->store_signal(
+            $user->id,
+            0,
+            'session-d',
+            'combined',
+            ['combinedscore' => 80, 'verdict' => 'HIGH_CONFIDENCE_AGENT']
+        );
         $this->assertEquals('agent_suspected', $result2['flag_status']);
 
         $flags = $manager->get_user_flags($user->id);
@@ -159,6 +185,7 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test manually setting a flag.
+     * @covers \local_agentdetect\signal_manager::set_flag
      */
     public function test_set_flag_manually(): void {
         $this->resetAfterTest();
@@ -184,6 +211,7 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test clearing a flag.
+     * @covers \local_agentdetect\signal_manager::clear_flag
      */
     public function test_clear_flag(): void {
         $this->resetAfterTest();
@@ -193,8 +221,13 @@ class signal_manager_test extends \advanced_testcase {
         $manager = new signal_manager();
 
         // Create a flag first.
-        $manager->store_signal($user->id, 0, 'session-e', 'combined',
-            ['combinedscore' => 80, 'verdict' => 'HIGH_CONFIDENCE_AGENT']);
+        $manager->store_signal(
+            $user->id,
+            0,
+            'session-e',
+            'combined',
+            ['combinedscore' => 80, 'verdict' => 'HIGH_CONFIDENCE_AGENT']
+        );
 
         // Clear it.
         $result = $manager->clear_flag($user->id, null, $admin->id);
@@ -206,6 +239,8 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test context-specific flags remain separate.
+     * @covers \local_agentdetect\signal_manager::store_signal
+     * @covers \local_agentdetect\signal_manager::get_flag
      */
     public function test_context_specific_flags(): void {
         $this->resetAfterTest();
@@ -218,12 +253,22 @@ class signal_manager_test extends \advanced_testcase {
         $manager = new signal_manager();
 
         // Flag in course 1.
-        $manager->store_signal($user->id, $ctx1->id, 'session-f', 'combined',
-            ['combinedscore' => 80, 'verdict' => 'HIGH_CONFIDENCE_AGENT']);
+        $manager->store_signal(
+            $user->id,
+            $ctx1->id,
+            'session-f',
+            'combined',
+            ['combinedscore' => 80, 'verdict' => 'HIGH_CONFIDENCE_AGENT']
+        );
 
         // Flag in course 2 with lower score.
-        $manager->store_signal($user->id, $ctx2->id, 'session-g', 'combined',
-            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']);
+        $manager->store_signal(
+            $user->id,
+            $ctx2->id,
+            'session-g',
+            'combined',
+            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']
+        );
 
         $flags = $manager->get_user_flags($user->id);
         $this->assertCount(2, $flags);
@@ -237,6 +282,7 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test that signal_detected event is triggered.
+     * @covers \local_agentdetect\signal_manager::store_signal
      */
     public function test_signal_detected_event(): void {
         $this->resetAfterTest();
@@ -245,8 +291,13 @@ class signal_manager_test extends \advanced_testcase {
         $sink = $this->redirectEvents();
 
         $manager = new signal_manager();
-        $manager->store_signal($user->id, 0, 'session-event', 'combined',
-            ['combinedscore' => 30, 'verdict' => 'LIKELY_HUMAN']);
+        $manager->store_signal(
+            $user->id,
+            0,
+            'session-event',
+            'combined',
+            ['combinedscore' => 30, 'verdict' => 'LIKELY_HUMAN']
+        );
 
         $events = $sink->get_events();
         $sink->close();
@@ -267,6 +318,7 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test that user_flagged event is triggered when a new flag is created.
+     * @covers \local_agentdetect\signal_manager::store_signal
      */
     public function test_user_flagged_event(): void {
         $this->resetAfterTest();
@@ -275,8 +327,13 @@ class signal_manager_test extends \advanced_testcase {
         $sink = $this->redirectEvents();
 
         $manager = new signal_manager();
-        $manager->store_signal($user->id, 0, 'session-flag-event', 'combined',
-            ['combinedscore' => 85, 'verdict' => 'HIGH_CONFIDENCE_AGENT']);
+        $manager->store_signal(
+            $user->id,
+            0,
+            'session-flag-event',
+            'combined',
+            ['combinedscore' => 85, 'verdict' => 'HIGH_CONFIDENCE_AGENT']
+        );
 
         $events = $sink->get_events();
         $sink->close();
@@ -296,6 +353,7 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test get_session_signals returns signals in correct order.
+     * @covers \local_agentdetect\signal_manager::get_session_signals
      */
     public function test_get_session_signals(): void {
         $this->resetAfterTest();
@@ -303,12 +361,27 @@ class signal_manager_test extends \advanced_testcase {
 
         $manager = new signal_manager();
 
-        $manager->store_signal($user->id, 0, 'session-order', 'fingerprint',
-            ['fingerprintscore' => 10]);
-        $manager->store_signal($user->id, 0, 'session-order', 'interaction',
-            ['interactionscore' => 20]);
-        $manager->store_signal($user->id, 0, 'session-order', 'combined',
-            ['combinedscore' => 15, 'verdict' => 'LIKELY_HUMAN']);
+        $manager->store_signal(
+            $user->id,
+            0,
+            'session-order',
+            'fingerprint',
+            ['fingerprintscore' => 10]
+        );
+        $manager->store_signal(
+            $user->id,
+            0,
+            'session-order',
+            'interaction',
+            ['interactionscore' => 20]
+        );
+        $manager->store_signal(
+            $user->id,
+            0,
+            'session-order',
+            'combined',
+            ['combinedscore' => 15, 'verdict' => 'LIKELY_HUMAN']
+        );
 
         $signals = $manager->get_session_signals('session-order');
         $this->assertCount(3, $signals);
@@ -319,6 +392,7 @@ class signal_manager_test extends \advanced_testcase {
 
     /**
      * Test get_flagged_users with filters.
+     * @covers \local_agentdetect\signal_manager::get_flagged_users
      */
     public function test_get_flagged_users(): void {
         $this->resetAfterTest();
@@ -327,10 +401,20 @@ class signal_manager_test extends \advanced_testcase {
 
         $manager = new signal_manager();
 
-        $manager->store_signal($user1->id, 0, 's1', 'combined',
-            ['combinedscore' => 85, 'verdict' => 'HIGH_CONFIDENCE_AGENT']);
-        $manager->store_signal($user2->id, 0, 's2', 'combined',
-            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']);
+        $manager->store_signal(
+            $user1->id,
+            0,
+            's1',
+            'combined',
+            ['combinedscore' => 85, 'verdict' => 'HIGH_CONFIDENCE_AGENT']
+        );
+        $manager->store_signal(
+            $user2->id,
+            0,
+            's2',
+            'combined',
+            ['combinedscore' => 50, 'verdict' => 'SUSPICIOUS']
+        );
 
         // Get all flagged users.
         $flagged = $manager->get_flagged_users();

@@ -67,12 +67,21 @@ echo html_writer::empty_tag('input', ['type' => 'text', 'id' => 'test-input',
     'style' => 'width: 100%; padding: 10px; font-size: 16px;',
     'placeholder' => get_string('testpage:inputplaceholder', 'local_agentdetect')]);
 echo html_writer::tag('p', get_string('testpage:clickbuttons', 'local_agentdetect'), ['style' => 'margin-top: 15px;']);
-echo html_writer::tag('button', get_string('testpage:button', 'local_agentdetect', 1),
-    ['class' => 'btn btn-primary', 'style' => 'margin-right: 10px;']);
-echo html_writer::tag('button', get_string('testpage:button', 'local_agentdetect', 2),
-    ['class' => 'btn btn-secondary', 'style' => 'margin-right: 10px;']);
-echo html_writer::tag('button', get_string('testpage:button', 'local_agentdetect', 3),
-    ['class' => 'btn btn-info']);
+echo html_writer::tag(
+    'button',
+    get_string('testpage:button', 'local_agentdetect', 1),
+    ['class' => 'btn btn-primary', 'style' => 'margin-right: 10px;']
+);
+echo html_writer::tag(
+    'button',
+    get_string('testpage:button', 'local_agentdetect', 2),
+    ['class' => 'btn btn-secondary', 'style' => 'margin-right: 10px;']
+);
+echo html_writer::tag(
+    'button',
+    get_string('testpage:button', 'local_agentdetect', 3),
+    ['class' => 'btn btn-info']
+);
 echo html_writer::tag(
     'div',
     get_string('testpage:scrollarea', 'local_agentdetect'),
