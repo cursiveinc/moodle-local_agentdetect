@@ -40,13 +40,13 @@ function local_agentdetect_before_footer(): string {
         return '';
     }
 
-    // --- Section 1: Detection engine ---
+    // Detection engine.
     $detectionenabled = get_config('local_agentdetect', 'enabled');
     if ($detectionenabled) {
         local_agentdetect_load_detector();
     }
 
-    // --- Section 2: Quiz badge injection for teachers ---
+    // Quiz badge injection for teachers.
     local_agentdetect_load_quiz_badges();
 
     return '';

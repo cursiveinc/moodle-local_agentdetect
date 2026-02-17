@@ -81,7 +81,7 @@ function display_flagged_students(int $courseid, context_course $context): void 
     }
 
     // Get enrolled users who have flags in these contexts.
-    list($ctxinsql, $ctxparams) = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED, 'ctx');
+    [$ctxinsql, $ctxparams] = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED, 'ctx');
 
     $sql = "SELECT f.userid, u.firstname, u.lastname, u.email,
                    MAX(f.maxscore) AS maxscore,
@@ -178,8 +178,11 @@ function display_student_signals(int $courseid, int $userid, context_course $con
 
     // Breadcrumb back to summary.
     $summaryurl = new moodle_url('/local/agentdetect/coursereport.php', ['courseid' => $courseid]);
-    echo html_writer::link($summaryurl, '&laquo; ' . get_string('coursereport:flaggedstudents', 'local_agentdetect'),
-        ['class' => 'mb-3 d-block']);
+    echo html_writer::link(
+        $summaryurl,
+        '&laquo; ' . get_string('coursereport:flaggedstudents', 'local_agentdetect'),
+        ['class' => 'mb-3 d-block']
+    );
 
     echo $OUTPUT->heading(get_string('coursereport:studentsignals', 'local_agentdetect', fullname($user)), 3);
 
@@ -200,7 +203,7 @@ function display_student_signals(int $courseid, int $userid, context_course $con
         return;
     }
 
-    list($ctxinsql, $ctxparams) = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED, 'ctx');
+    [$ctxinsql, $ctxparams] = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED, 'ctx');
     $ctxparams['userid'] = $userid;
 
     // Get session summaries — grouped by sessionid, sorted by highest score first.
@@ -301,7 +304,7 @@ function display_student_signals(int $courseid, int $userid, context_course $con
         return;
     }
 
-    // --- Roll-up summary card at top ---
+    // Roll-up summary card at top.
     $scorebadge = format_score_badge($overallmaxscore);
     $verdictbadge = format_verdict_badge($overallmaxverdict);
 
@@ -315,22 +318,34 @@ function display_student_signals(int $courseid, int $userid, context_course $con
     echo html_writer::start_div('d-flex flex-wrap mb-3');
 
     echo html_writer::start_div('mr-4 mb-2');
-    echo html_writer::tag('small', get_string('coursereport:highestscore', 'local_agentdetect'),
-        ['class' => 'd-block text-muted']);
+    echo html_writer::tag(
+        'small',
+        get_string('coursereport:highestscore', 'local_agentdetect'),
+        ['class' => 'd-block text-muted']
+    );
     echo html_writer::tag('span', $scorebadge, ['class' => 'h5']);
     echo html_writer::end_div();
 
     echo html_writer::start_div('mr-4 mb-2');
-    echo html_writer::tag('small', get_string('coursereport:highestverdict', 'local_agentdetect'),
-        ['class' => 'd-block text-muted']);
+    echo html_writer::tag(
+        'small',
+        get_string('coursereport:highestverdict', 'local_agentdetect'),
+        ['class' => 'd-block text-muted']
+    );
     echo html_writer::tag('span', $verdictbadge, ['class' => 'h5']);
     echo html_writer::end_div();
 
     echo html_writer::start_div('mr-4 mb-2');
-    echo html_writer::tag('small', get_string('coursereport:sessioncount', 'local_agentdetect'),
-        ['class' => 'd-block text-muted']);
-    echo html_writer::tag('span', $sessionswithsignals . ' / ' . $totalsessions,
-        ['class' => 'h5']);
+    echo html_writer::tag(
+        'small',
+        get_string('coursereport:sessioncount', 'local_agentdetect'),
+        ['class' => 'd-block text-muted']
+    );
+    echo html_writer::tag(
+        'span',
+        $sessionswithsignals . ' / ' . $totalsessions,
+        ['class' => 'h5']
+    );
     echo html_writer::end_div();
 
     echo html_writer::end_div(); // Metrics row.
@@ -338,7 +353,7 @@ function display_student_signals(int $courseid, int $userid, context_course $con
     echo html_writer::end_div(); // Card body.
     echo html_writer::end_div(); // Card.
 
-    // --- Per-session cards (filtered, highest score first) ---
+    // Per-session cards (filtered, highest score first).
     foreach ($sessioncards as $card) {
         $session = $card['session'];
         $explanations = $card['explanations'];
@@ -358,9 +373,11 @@ function display_student_signals(int $courseid, int $userid, context_course $con
         // Card body — signal explanations.
         echo html_writer::start_div('card-body');
 
-        echo html_writer::tag('p',
+        echo html_writer::tag(
+            'p',
             get_string('coursereport:whyflagged', 'local_agentdetect'),
-            ['class' => 'font-weight-bold mb-2']);
+            ['class' => 'font-weight-bold mb-2']
+        );
         echo html_writer::start_tag('ul', ['class' => 'mb-0']);
         foreach ($explanations as $explanation) {
             echo html_writer::tag('li', $explanation);
@@ -374,11 +391,12 @@ function display_student_signals(int $courseid, int $userid, context_course $con
     // If user also has viewsignals, show link to admin report.
     if (has_capability('local/agentdetect:viewsignals', context_system::instance())) {
         $adminurl = new moodle_url('/local/agentdetect/report.php', ['userid' => $userid]);
-        echo html_writer::div(
-            html_writer::link($adminurl, get_string('coursereport:viewadminreport', 'local_agentdetect'),
-                ['class' => 'btn btn-sm btn-outline-secondary']),
-            'mt-3'
+        $adminlink = html_writer::link(
+            $adminurl,
+            get_string('coursereport:viewadminreport', 'local_agentdetect'),
+            ['class' => 'btn btn-sm btn-outline-secondary']
         );
+        echo html_writer::div($adminlink, 'mt-3');
     }
 }
 
@@ -518,7 +536,7 @@ function build_signal_explanations(object $data): array {
     }
 
     // Sort by weight descending and take the most significant ones.
-    usort($signals, function($a, $b) {
+    usort($signals, function ($a, $b) {
         return $b->weight - $a->weight;
     });
 
@@ -651,4 +669,3 @@ function explain_signal(string $name, $value, int $weight): ?string {
     // Fallback for unmapped signals — show the technical name.
     return null;
 }
-

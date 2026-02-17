@@ -155,8 +155,11 @@ if ($userid) {
     echo html_writer::end_div();
 }
 
-echo html_writer::tag('button', get_string('report:filter', 'local_agentdetect'),
-    ['type' => 'submit', 'class' => 'btn btn-primary mb-2 mr-2']);
+echo html_writer::tag(
+    'button',
+    get_string('report:filter', 'local_agentdetect'),
+    ['type' => 'submit', 'class' => 'btn btn-primary mb-2 mr-2']
+);
 if ($userid || $sessionid) {
     echo html_writer::link(
         new moodle_url('/local/agentdetect/report.php'),

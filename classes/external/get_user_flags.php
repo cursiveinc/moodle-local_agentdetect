@@ -91,8 +91,8 @@ class get_user_flags extends external_api {
         $contextids = self::get_context_and_children_ids($context);
 
         // Build query for flags in these contexts (including NULL contextid for system-level flags).
-        list($userinsql, $userparams) = $DB->get_in_or_equal($params['userids'], SQL_PARAMS_NAMED, 'uid');
-        list($ctxinsql, $ctxparams) = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED, 'ctx');
+        [$userinsql, $userparams] = $DB->get_in_or_equal($params['userids'], SQL_PARAMS_NAMED, 'uid');
+        [$ctxinsql, $ctxparams] = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED, 'ctx');
 
         $sql = "SELECT f.userid, f.flagtype, f.maxscore, f.detectioncount
                   FROM {local_agentdetect_flags} f
@@ -143,8 +143,8 @@ class get_user_flags extends external_api {
     private static function get_scanned_unflagged_users(array $userids, array $contextids): array {
         global $DB;
 
-        list($userinsql, $userparams) = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'suid');
-        list($ctxinsql, $ctxparams) = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED, 'sctx');
+        [$userinsql, $userparams] = $DB->get_in_or_equal($userids, SQL_PARAMS_NAMED, 'suid');
+        [$ctxinsql, $ctxparams] = $DB->get_in_or_equal($contextids, SQL_PARAMS_NAMED, 'sctx');
 
         // Get the max combined score for each unflagged user who has signals.
         $sql = "SELECT s.userid, MAX(s.combinedscore) AS maxscore, COUNT(*) AS signalcount
