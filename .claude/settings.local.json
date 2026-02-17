@@ -15,7 +15,9 @@
       "Bash(node --version:*)",
       "Bash(npm --version:*)",
       "Bash(npm ls:*)",
-      "Bash(npm outdated:*)"
+      "Bash(npm outdated:*)",
+      "WebFetch(domain:moodledev.io)",
+      "WebFetch(domain:docs.moodle.org)"
     ]
   }
 }

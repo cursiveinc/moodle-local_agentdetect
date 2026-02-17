@@ -15,17 +15,24 @@
 // along with Moodle.  If not, see <http://www.gnu.org/licenses/>.
 
 /**
- * Version information for local_agentdetect.
+ * Uninstall hook for local_agentdetect.
+ *
+ * Called before tables and settings are dropped during plugin removal.
  *
  * @package    local_agentdetect
  * @copyright  2026 Cursive Technology <joe@cursivetechnology.com>
  * @license    http://www.gnu.org/copyleft/gpl.html GNU GPL v3 or later
  */
 
-defined('MOODLE_INTERNAL') || die();
-
-$plugin->component = 'local_agentdetect';
-$plugin->version = 2026021700;
-$plugin->requires = 2023100900; // Moodle 4.3+.
-$plugin->maturity = MATURITY_BETA;
-$plugin->release = '0.3.0';
+/**
+ * Custom uninstall procedure.
+ *
+ * Moodle automatically handles dropping the plugin's tables and
+ * config_plugins settings. This hook is provided for any additional
+ * cleanup that may be needed in the future.
+ *
+ * @return bool True on success.
+ */
+function xmldb_local_agentdetect_uninstall() {
+    return true;
+}

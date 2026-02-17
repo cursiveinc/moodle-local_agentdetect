@@ -56,5 +56,11 @@ function xmldb_local_agentdetect_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026021600, 'local', 'agentdetect');
     }
 
+    if ($oldversion < 2026021700) {
+        // Version 0.3.0: Added backup/restore API, event classes, riskbitmasks on capabilities.
+        // No database schema changes — only capability and code-level additions.
+        upgrade_plugin_savepoint(true, 2026021700, 'local', 'agentdetect');
+    }
+
     return true;
 }

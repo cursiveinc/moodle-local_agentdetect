@@ -125,7 +125,7 @@ echo html_writer::start_tag('form', ['method' => 'get', 'action' => $PAGE->url->
 
 // User dropdown.
 echo html_writer::start_div('form-group mr-3 mb-2');
-echo html_writer::label('User: ', 'userid', true, ['class' => 'mr-2']);
+echo html_writer::label(get_string('user') . ': ', 'userid', true, ['class' => 'mr-2']);
 $useroptions = [0 => get_string('report:allusers', 'local_agentdetect')];
 foreach ($userswithsignals as $u) {
     $scorelabel = $u->maxscore >= 70 ? ' ⚠️' : ($u->maxscore >= 40 ? ' ⚡' : '');
@@ -146,7 +146,7 @@ if ($userid) {
     );
 
     echo html_writer::start_div('form-group mr-3 mb-2');
-    echo html_writer::label('Session: ', 'sessionid', true, ['class' => 'mr-2']);
+    echo html_writer::label(get_string('coursereport:sessionid', 'local_agentdetect') . ': ', 'sessionid', true, ['class' => 'mr-2']);
     $sessionoptions = ['' => get_string('report:allsessions', 'local_agentdetect')];
     foreach ($sessions as $s) {
         $sessionoptions[$s->sessionid] = $s->sessionid . ' (max: ' . ($s->maxscore ?? '?') . ')';
@@ -176,7 +176,7 @@ $downloadurl = new moodle_url('/local/agentdetect/report.php', [
 ]);
 echo html_writer::link(
     $downloadurl,
-    '📥 Download JSON',
+    get_string('report:downloadjson', 'local_agentdetect'),
     ['class' => 'btn btn-outline-success mb-2']
 );
 
@@ -231,7 +231,7 @@ if (empty($signals)) {
         "SELECT COUNT(*) FROM {local_agentdetect_signals} s {$countwhere}",
         $countparams
     );
-    echo html_writer::tag('p', "Showing latest {$limit} of {$totalcount} total signals.");
+    echo html_writer::tag('p', get_string('report:showing', 'local_agentdetect', (object) ['limit' => $limit, 'total' => $totalcount]));
 
     // If viewing a user, show summary stats.
     if ($userid) {
@@ -267,7 +267,18 @@ if (empty($signals)) {
 
     // Signals table.
     $table = new html_table();
-    $table->head = ['Time', 'User', 'Page', 'Type', 'FP', 'Int', 'Inj', 'Combined', 'Verdict', 'Details'];
+    $table->head = [
+        get_string('time'),
+        get_string('user'),
+        get_string('page', 'local_agentdetect'),
+        get_string('type', 'local_agentdetect'),
+        get_string('report:fp', 'local_agentdetect'),
+        get_string('report:int', 'local_agentdetect'),
+        get_string('report:inj', 'local_agentdetect'),
+        get_string('report:combined', 'local_agentdetect'),
+        get_string('coursereport:verdict', 'local_agentdetect'),
+        get_string('report:details', 'local_agentdetect'),
+    ];
     $table->attributes['class'] = 'table table-striped table-sm';
 
     foreach ($signals as $signal) {
@@ -418,7 +429,14 @@ if (!$userid) {
         echo html_writer::div(get_string('report:noflags', 'local_agentdetect'), 'alert alert-info');
     } else {
         $flagtable = new html_table();
-        $flagtable->head = ['User', 'Flag Type', 'Max Score', 'Detection Count', 'Last Updated', 'Actions'];
+        $flagtable->head = [
+            get_string('user'),
+            get_string('coursereport:flagtype', 'local_agentdetect'),
+            get_string('coursereport:maxscore', 'local_agentdetect'),
+            get_string('coursereport:detectioncount', 'local_agentdetect'),
+            get_string('coursereport:lastdetected', 'local_agentdetect'),
+            get_string('actions'),
+        ];
         $flagtable->attributes['class'] = 'table table-striped table-sm';
 
         foreach ($flags as $flag) {

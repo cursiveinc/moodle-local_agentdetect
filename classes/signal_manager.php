@@ -83,12 +83,30 @@ class signal_manager {
         $record->combinedscore = $combinedscore;
         $record->verdict = $verdict;
         $record->signaldata = json_encode($data);
-        $record->useragent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        $record->useragent = \core_useragent::get_user_agent_string() ?? '';
         $record->ipaddress = getremoteaddr();
         $record->timecreated = time();
 
         // Insert the signal record.
         $record->id = $DB->insert_record('local_agentdetect_signals', $record);
+
+        // Fire signal_detected event.
+        $context = $contextid ? \context::instance_by_id($contextid, IGNORE_MISSING) : null;
+        if (!$context) {
+            $context = \context_system::instance();
+        }
+        $event = \local_agentdetect\event\signal_detected::create([
+            'objectid' => $record->id,
+            'context' => $context,
+            'relateduserid' => $userid,
+            'other' => [
+                'sessionid' => $sessionid,
+                'signaltype' => $signaltype,
+                'combinedscore' => $combinedscore,
+                'verdict' => $verdict,
+            ],
+        ]);
+        $event->trigger();
 
         // Update user flag if score warrants it.
         $flagstatus = $this->update_user_flag($userid, $contextid, $combinedscore, $sessionid);
@@ -148,11 +166,18 @@ class signal_manager {
             }
 
             // Escalate flag type if score is high enough.
+            $oldflagtype = $existingflag->flagtype;
             if ($score >= self::FLAG_THRESHOLD_HIGH && $existingflag->flagtype !== self::FLAG_CONFIRMED) {
                 $existingflag->flagtype = self::FLAG_SUSPECTED;
             }
 
             $DB->update_record('local_agentdetect_flags', $existingflag);
+
+            // Fire event if flag type was escalated.
+            if ($existingflag->flagtype !== $oldflagtype) {
+                $this->trigger_user_flagged_event($userid, $contextid, $existingflag->id,
+                    $existingflag->flagtype, $existingflag->maxscore);
+            }
 
             return $existingflag->flagtype;
         } else {
@@ -167,7 +192,10 @@ class signal_manager {
             $flag->timecreated = $now;
             $flag->timemodified = $now;
 
-            $DB->insert_record('local_agentdetect_flags', $flag);
+            $flagid = $DB->insert_record('local_agentdetect_flags', $flag);
+
+            // Fire user_flagged event.
+            $this->trigger_user_flagged_event($userid, $contextid, $flagid, $flag->flagtype, $flag->maxscore);
 
             return $flag->flagtype;
         }
@@ -334,6 +362,39 @@ class signal_manager {
      * @return bool Success.
      */
     public function clear_flag(int $userid, ?int $contextid = null, int $clearedby = 0): bool {
-        return $this->set_flag($userid, self::FLAG_CLEARED, $contextid, 'Cleared by admin', $clearedby) > 0;
+        return $this->set_flag($userid, self::FLAG_CLEARED, $contextid,
+            get_string('flag:clearedbyadmin', 'local_agentdetect'), $clearedby) > 0;
+    }
+
+    /**
+     * Trigger the user_flagged event.
+     *
+     * @param int $userid The flagged user ID.
+     * @param int|null $contextid Context ID.
+     * @param int $flagid The flag record ID.
+     * @param string $flagtype The flag type.
+     * @param int $maxscore The maximum score.
+     */
+    protected function trigger_user_flagged_event(
+        int $userid,
+        ?int $contextid,
+        int $flagid,
+        string $flagtype,
+        int $maxscore
+    ): void {
+        $context = $contextid ? \context::instance_by_id($contextid, IGNORE_MISSING) : null;
+        if (!$context) {
+            $context = \context_system::instance();
+        }
+        $event = \local_agentdetect\event\user_flagged::create([
+            'objectid' => $flagid,
+            'context' => $context,
+            'relateduserid' => $userid,
+            'other' => [
+                'flagtype' => $flagtype,
+                'maxscore' => $maxscore,
+            ],
+        ]);
+        $event->trigger();
     }
 }

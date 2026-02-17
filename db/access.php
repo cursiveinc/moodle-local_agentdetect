@@ -34,6 +34,7 @@ $capabilities = [
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW,
         ],
+        'riskbitmask' => RISK_PERSONAL,
     ],
 
     // Manage user flags (confirm, clear, etc.).
@@ -53,6 +54,7 @@ $capabilities = [
         'archetypes' => [
             'manager' => CAP_ALLOW,
         ],
+        'riskbitmask' => RISK_PERSONAL,
     ],
 
     // Configure plugin settings.
@@ -62,5 +64,6 @@ $capabilities = [
         'archetypes' => [
             'manager' => CAP_ALLOW,
         ],
+        'riskbitmask' => RISK_CONFIG,
     ],
 ];

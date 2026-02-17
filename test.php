@@ -39,40 +39,43 @@ $PAGE->set_heading(get_string('testpage', 'local_agentdetect'));
 
 echo $OUTPUT->header();
 
-echo html_writer::tag('h3', 'Real-time Agent Detection Test');
-echo html_writer::tag('p', 'This page loads the detection modules and displays results in real-time.
-    Move your mouse, click, type, and scroll to generate interaction data.');
+echo html_writer::tag('h3', get_string('testpage', 'local_agentdetect'));
+echo html_writer::tag('p', get_string('testpage:description', 'local_agentdetect'));
 
 // Results containers.
 echo html_writer::start_div('', ['id' => 'agentdetect-results', 'style' => 'margin-top: 20px;']);
 
-echo html_writer::tag('h4', 'Fingerprint Detection');
-echo html_writer::div('Collecting...', '', ['id' => 'fingerprint-results',
+echo html_writer::tag('h4', get_string('testpage:fingerprint', 'local_agentdetect'));
+echo html_writer::div(get_string('testpage:collecting', 'local_agentdetect'), '', ['id' => 'fingerprint-results',
     'style' => 'background: #f5f5f5; padding: 15px; margin-bottom: 20px; font-family: monospace; white-space: pre-wrap;']);
 
-echo html_writer::tag('h4', 'Interaction Analysis');
-echo html_writer::div('Monitoring... (interact with the page)', '', ['id' => 'interaction-results',
+echo html_writer::tag('h4', get_string('testpage:interaction', 'local_agentdetect'));
+echo html_writer::div(get_string('testpage:monitoring', 'local_agentdetect'), '', ['id' => 'interaction-results',
     'style' => 'background: #f5f5f5; padding: 15px; margin-bottom: 20px; font-family: monospace; white-space: pre-wrap;']);
 
-echo html_writer::tag('h4', 'Combined Score');
-echo html_writer::div('Calculating...', '', ['id' => 'combined-score',
+echo html_writer::tag('h4', get_string('testpage:combined', 'local_agentdetect'));
+echo html_writer::div(get_string('testpage:calculating', 'local_agentdetect'), '', ['id' => 'combined-score',
     'style' => 'background: #e0e0e0; padding: 20px; font-size: 24px; text-align: center;']);
 
 echo html_writer::end_div();
 
 // Test interaction area.
-echo html_writer::tag('h4', 'Test Interaction Area', ['style' => 'margin-top: 30px;']);
+echo html_writer::tag('h4', get_string('testpage:interactionarea', 'local_agentdetect'), ['style' => 'margin-top: 30px;']);
 echo html_writer::start_div('', ['style' => 'background: #fff; border: 2px solid #ccc; padding: 20px;']);
-echo html_writer::tag('p', 'Type something here:');
+echo html_writer::tag('p', get_string('testpage:typesomething', 'local_agentdetect'));
 echo html_writer::empty_tag('input', ['type' => 'text', 'id' => 'test-input',
-    'style' => 'width: 100%; padding: 10px; font-size: 16px;', 'placeholder' => 'Type to generate keystroke data...']);
-echo html_writer::tag('p', 'Click these buttons:', ['style' => 'margin-top: 15px;']);
-echo html_writer::tag('button', 'Button 1', ['class' => 'btn btn-primary', 'style' => 'margin-right: 10px;']);
-echo html_writer::tag('button', 'Button 2', ['class' => 'btn btn-secondary', 'style' => 'margin-right: 10px;']);
-echo html_writer::tag('button', 'Button 3', ['class' => 'btn btn-info']);
+    'style' => 'width: 100%; padding: 10px; font-size: 16px;',
+    'placeholder' => get_string('testpage:inputplaceholder', 'local_agentdetect')]);
+echo html_writer::tag('p', get_string('testpage:clickbuttons', 'local_agentdetect'), ['style' => 'margin-top: 15px;']);
+echo html_writer::tag('button', get_string('testpage:button', 'local_agentdetect', 1),
+    ['class' => 'btn btn-primary', 'style' => 'margin-right: 10px;']);
+echo html_writer::tag('button', get_string('testpage:button', 'local_agentdetect', 2),
+    ['class' => 'btn btn-secondary', 'style' => 'margin-right: 10px;']);
+echo html_writer::tag('button', get_string('testpage:button', 'local_agentdetect', 3),
+    ['class' => 'btn btn-info']);
 echo html_writer::tag(
     'div',
-    'Scroll area - add more content here to test scrolling...',
+    get_string('testpage:scrollarea', 'local_agentdetect'),
     ['style' => 'height: 200px; overflow-y: scroll; margin-top: 15px; background: #fafafa; padding: 10px;']
 );
 echo html_writer::end_div();
