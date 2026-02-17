@@ -1,3 +1,4 @@
+[![Moodle Plugin CI](https://github.com/joethibault/moodle-local_agentdetect/actions/workflows/ci.yml/badge.svg)](https://github.com/joethibault/moodle-local_agentdetect/actions/workflows/ci.yml)
 # Agent Detection (local_agentdetect)
 
 A Moodle local plugin that detects automated browser agents (e.g., Perplexity Comet) during quizzes and assessments.
@@ -8,7 +9,7 @@ Agent Detection monitors browser fingerprints and user interaction patterns to i
 
 - **Browser fingerprinting** - Detects WebDriver flags, headless browser indicators, and known automation extensions.
 - **Interaction analysis** - Monitors mouse movement, click patterns, keystroke timing, and scroll behaviour to identify non-human interaction patterns.
-- **DOM injection detection** - Uses MutationObserver to detect elements injected by AI helper browser extensions.
+- **DOM injection detection** - (Coming soon )Uses MutationObserver to detect elements injected by AI helper browser extensions.
 - **Comet-specific signals** - Targeted detection for Perplexity's Comet agentic browser including centre-precision clicks, teleport patterns, zero keystrokes, and per-page mouse ratio analysis.
 
 ## Requirements
@@ -48,6 +49,9 @@ Agent Detection monitors browser fingerprints and user interaction patterns to i
 - **Admin report**: Available at **Site Administration > Reports > Agent Detection**. Shows all signals and flags across the site. Requires `viewsignals` capability.
 - **Course report**: Available in the course navigation Reports section. Shows flagged students enrolled in the course. Requires `viewreports` capability.
 - **Quiz badges**: Visual indicators appear next to student names on quiz review pages when flags exist.
+<img width="1878" height="1082" alt="Screenshot 2026-02-16 182335" src="https://github.com/user-attachments/assets/fba48227-a0fa-4232-bd19-5fc9950b09e2" />
+
+
 
 ## Privacy
 
