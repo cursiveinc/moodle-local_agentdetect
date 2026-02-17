@@ -1,3 +1,4 @@
+[![Moodle Plugin CI](https://github.com/joethibault/moodle-local_agentdetect/actions/workflows/ci.yml/badge.svg)](https://github.com/joethibault/moodle-local_agentdetect/actions/workflows/ci.yml)
 # Agent Detection (local_agentdetect)
 
 A Moodle local plugin that detects automated browser agents (e.g., Perplexity Comet) during quizzes and assessments.
