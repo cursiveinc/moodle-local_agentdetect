@@ -26,6 +26,6 @@ defined('MOODLE_INTERNAL') || die();
 
 $plugin->component = 'local_agentdetect';
 $plugin->version = 2026021700;
-$plugin->requires = 2023100900; // Moodle 4.3+.
+$plugin->requires = 2024100700; // Moodle 4.5+.
 $plugin->maturity = MATURITY_BETA;
 $plugin->release = '0.3.0';

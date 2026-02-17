@@ -17,7 +17,9 @@
       "Bash(npm ls:*)",
       "Bash(npm outdated:*)",
       "WebFetch(domain:moodledev.io)",
-      "WebFetch(domain:docs.moodle.org)"
+      "WebFetch(domain:docs.moodle.org)",
+      "WebFetch(domain:raw.githubusercontent.com)",
+      "WebFetch(domain:endoflife.date)"
     ]
   }
 }
