@@ -45,6 +45,7 @@ $capabilities = [
             'editingteacher' => CAP_ALLOW,
             'manager' => CAP_ALLOW,
         ],
+        'riskbitmask' => RISK_PERSONAL,
     ],
 
     // View detailed signal data (may contain sensitive info).

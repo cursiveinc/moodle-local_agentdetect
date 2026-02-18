@@ -133,9 +133,16 @@ class report_signals extends external_api {
                 'flagstatus' => $result['flag_status'] ?? 'none',
             ];
         } catch (\Exception $e) {
+            debugging(
+                'AgentDetect signal storage failed: ' . $e->getMessage(),
+                DEBUG_DEVELOPER
+            );
             return [
                 'success' => false,
-                'message' => 'Failed to store signal: ' . $e->getMessage(),
+                'message' => get_string(
+                    'error:signalstorefailed',
+                    'local_agentdetect'
+                ),
             ];
         }
     }

@@ -62,5 +62,11 @@ function xmldb_local_agentdetect_upgrade($oldversion) {
         upgrade_plugin_savepoint(true, 2026021700, 'local', 'agentdetect');
     }
 
+    if ($oldversion < 2026021800) {
+        // Version 0.3.1: Security hardening — added RISK_PERSONAL to manageflags capability.
+        // No database schema changes.
+        upgrade_plugin_savepoint(true, 2026021800, 'local', 'agentdetect');
+    }
+
     return true;
 }

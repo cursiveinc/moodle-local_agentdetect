@@ -299,16 +299,21 @@ if (empty($signals)) {
         $pagetitle = $data->pageTitle ?? null;
 
         // Page link - show title or shortened URL.
-        if ($pageurl) {
+        // Validate URL scheme to prevent javascript: XSS links.
+        $safescheme = $pageurl && preg_match('/^https?:\/\//i', $pageurl);
+        if ($pageurl && $safescheme) {
             $displaytext = $pagetitle ? $pagetitle : basename(parse_url($pageurl, PHP_URL_PATH));
             if (strlen($displaytext) > 30) {
                 $displaytext = substr($displaytext, 0, 27) . '...';
             }
             $pagelink = html_writer::link(
                 $pageurl,
-                $displaytext,
-                ['title' => $pageurl, 'target' => '_blank']
+                s($displaytext),
+                ['title' => s($pageurl), 'target' => '_blank']
             );
+        } else if ($pageurl) {
+            // Non-http URL — render as escaped text, not a link.
+            $pagelink = html_writer::tag('span', s($pageurl), ['class' => 'text-muted']);
         } else {
             $pagelink = html_writer::tag('span', '-', ['class' => 'text-muted']);
         }
@@ -361,26 +366,29 @@ if (empty($signals)) {
             // Interaction anomalies.
             if (isset($data->interaction->anomalies) && !empty($data->interaction->anomalies)) {
                 foreach ($data->interaction->anomalies as $a) {
-                    $details[] = '<span class="text-danger">' . $a->name . '</span> (' . round($a->value, 2) . ') w:' . $a->weight;
+                    $details[] = '<span class="text-danger">' . s($a->name) .
+                        '</span> (' . round($a->value, 2) . ') w:' . (int) $a->weight;
                 }
             }
 
             // Injection signals.
             if (isset($data->injection->signals) && !empty($data->injection->signals)) {
                 foreach ($data->injection->signals as $s) {
-                    $details[] = '<span class="text-info">[INJ] ' . $s->name . '</span> (' . $s->count . ') w:' . $s->maxWeight;
+                    $details[] = '<span class="text-info">[INJ] ' . s($s->name) .
+                        '</span> (' . (int) $s->count . ') w:' . (int) $s->maxWeight;
                 }
             }
 
             // Comet agentic signals.
             if (isset($data->comet) && !empty($data->comet->detected)) {
+                $cometscore = (int) ($data->comet->score ?? 0);
                 $details[] = '<span class="text-danger font-weight-bold">[COMET AGENT] Score: ' .
-                    ($data->comet->score ?? '?') . '</span>';
+                    $cometscore . '</span>';
                 if (isset($data->comet->signals) && !empty($data->comet->signals)) {
                     foreach ($data->comet->signals as $cs) {
-                        $weight = $cs->weight ?? $cs->maxWeight ?? '?';
+                        $weight = (int) ($cs->weight ?? $cs->maxWeight ?? 0);
                         $details[] = '<span class="text-danger">[COMET] ' .
-                            htmlspecialchars($cs->name) . '</span> w:' . $weight;
+                            s($cs->name) . '</span> w:' . $weight;
                     }
                 }
             }
@@ -388,7 +396,10 @@ if (empty($signals)) {
             // Event counts (for context).
             if (isset($data->interaction->eventCounts)) {
                 $ec = $data->interaction->eventCounts;
-                $details[] = "<span class='text-muted'>events: m:{$ec->mouseMoves} c:{$ec->clicks} k:{$ec->keystrokes}</span>";
+                $moves = (int) ($ec->mouseMoves ?? 0);
+                $clicks = (int) ($ec->clicks ?? 0);
+                $keys = (int) ($ec->keystrokes ?? 0);
+                $details[] = "<span class='text-muted'>events: m:{$moves} c:{$clicks} k:{$keys}</span>";
             }
 
             $detailshtml = html_writer::tag('small', implode('<br>', $details));

@@ -67,14 +67,27 @@ if (json_last_error() !== JSON_ERROR_NONE) {
     exit;
 }
 
+// Sanitise input fields.
+$sessionid = clean_param($data['sessionid'], PARAM_ALPHANUMEXT);
+$signaltype = clean_param($data['signaltype'], PARAM_ALPHA);
+$contextid = clean_param($data['contextid'] ?? 0, PARAM_INT);
+
+// Validate context exists, fall back to system context (0) if not.
+if ($contextid > 0) {
+    $ctx = \context::instance_by_id($contextid, IGNORE_MISSING);
+    if (!$ctx) {
+        $contextid = 0;
+    }
+}
+
 // Store the signal.
 try {
     $manager = new \local_agentdetect\signal_manager();
     $manager->store_signal(
         $USER->id,
-        $data['contextid'] ?? 0,
-        $data['sessionid'],
-        $data['signaltype'],
+        $contextid,
+        $sessionid,
+        $signaltype,
         $signaldata
     );
 

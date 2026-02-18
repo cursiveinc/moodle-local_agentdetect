@@ -57,6 +57,7 @@ $string['coursereport:viewadminreport'] = 'View admin report';
 $string['coursereport:viewdetails'] = 'View details';
 $string['coursereport:whyflagged'] = 'Why was this session flagged?';
 $string['error:debugonly'] = 'This page is only accessible when debug mode is enabled.';
+$string['error:signalstorefailed'] = 'Failed to store detection signal.';
 $string['event:signaldetected'] = 'Agent detection signal recorded';
 $string['event:userflagged'] = 'User flagged by agent detection';
 $string['flag:clearedbyadmin'] = 'Cleared by admin';
